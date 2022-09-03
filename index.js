@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+ const { Client, GatewayIntentBits } = require("discord.js");
 const client = new Client({
   'intents': [
     GatewayIntentBits.Guilds,
@@ -25,8 +25,15 @@ client.on('messageCreate', async (msg) => {
   if (msg.content.match(/^https:\/\/twitter.com/igm)) {
     let vxMsg = msg.content.replace('twitter', 'vxtwitter');
     msg.channel.fetchWebhooks().then((webhooks) => {
+      let webhookNumber=0;
+      webhooks.forEach(webhook => {
+        if((webhook.name==="VxT 1")||(webhook.name==="VxT 2")){
+          webhookNumber++;
+        }
+      });
 
-      if (webhooks.size === 2) {
+
+      if (webhookNumber === 2) {
         let webhook= getRandomItem(webhooks)[1];
           webhook.send({
             content: vxMsg,
@@ -35,7 +42,7 @@ client.on('messageCreate', async (msg) => {
           })
           msg.delete();
       }
-      else if (webhooks.size === 1) {
+      else if (webhookNumber === 1) {
         msg.channel.createWebhook({ name: 'VxT 2' }).then((webhook) => {
           webhook.send({
             content: vxMsg,
@@ -45,7 +52,7 @@ client.on('messageCreate', async (msg) => {
           msg.delete();
         }).catch(console.error)
       }
-      else if (webhooks.size === 0) {
+      else if (webhookNumber === 0) {
         msg.channel.createWebhook({ name: 'VxT 1' }).then((webhook) => {
           webhook.send({
             content: vxMsg,
@@ -72,7 +79,10 @@ function randomNumber(min, max) {
 
 function getRandomItem(set) {
     let items = Array.from(set);
-    return items[Math.floor(Math.random() * items.length)];
+  let filtereditems=items.filter((elem)=>{
+    return (elem[1].name==="VxT 1"||elem[1].name==="VxT 2");
+  })
+    return filtereditems[Math.floor(Math.random() * filtereditems.length)];
 }
 
 client.on("ready", () => {
@@ -80,7 +90,7 @@ client.on("ready", () => {
 })
 
 
-
-client.login(process.env.TOKEN)
+// client.on("debug", ( e ) => console.log(e));
+client.login(process.env['TOKEN'])
 //const mySecret = process.env['TOKEN'
 keepAlive();
