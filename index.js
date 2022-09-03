@@ -1,8 +1,4 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-
-
-
-
 const client = new Client({
   'intents': [
     GatewayIntentBits.Guilds,
@@ -12,6 +8,12 @@ const client = new Client({
     GatewayIntentBits.GuildIntegrations
   ],
 });
+
+
+const keepAlive=require('./server')
+
+
+
 
 
 
@@ -81,3 +83,4 @@ client.on("ready", () => {
 
 client.login(process.env.TOKEN)
 //const mySecret = process.env['TOKEN'
+keepAlive();
