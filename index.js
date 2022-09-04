@@ -10,7 +10,6 @@ const client = new Client({
 });
 
 
-const keepAlive=require('./server')
 
 
 
@@ -18,12 +17,13 @@ const keepAlive=require('./server')
 
 
 client.on('messageCreate', async (msg) => {
-
+  if (msg.webhookId) return;
   if (msg.content === "ping") {
     msg.reply("pong");
   }
-  if (msg.content.match(/^https:\/\/twitter.com/igm)) {
-    let vxMsg = msg.content.replace('twitter', 'vxtwitter');
+  
+  if (msg.content.match(/https:\/\/twitter.com/ig)) {
+    let vxMsg = msg.content.replace(/twitter/g, 'vxtwitter');
     msg.channel.fetchWebhooks().then((webhooks) => {
       let webhookNumber=0;
       webhooks.forEach(webhook => {
@@ -93,4 +93,3 @@ client.on("ready", () => {
 // client.on("debug", ( e ) => console.log(e));
 client.login(process.env['TOKEN'])
 //const mySecret = process.env['TOKEN'
-keepAlive();
