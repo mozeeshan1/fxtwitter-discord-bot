@@ -68,13 +68,6 @@ client.on('messageCreate', async (msg) => {
   }
 });
 
-
-function randomNumber(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function getRandomItem(set) {
     let items = Array.from(set);
   let filtereditems=items.filter((elem)=>{
