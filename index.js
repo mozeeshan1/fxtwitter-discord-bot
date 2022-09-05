@@ -20,7 +20,6 @@ client.on('messageCreate', async (msg) => {
   if (msg.content === "ping") {
     msg.reply("pong");
   }
-  console.log(msg.author);
   if (msg.content.match(/https:\/\/twitter.com/ig)) {
     let vxMsg = msg.content.replace(/twitter/g, 'vxtwitter');
     msg.channel.fetchWebhooks().then((webhooks) => {
@@ -36,18 +35,18 @@ client.on('messageCreate', async (msg) => {
         let webhook= getRandomItem(webhooks)[1];
           webhook.send({
             content: vxMsg,
-            username: msg.author.username,
-            avatarURL: msg.author.displayAvatarURL()
-          })
+            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
+            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+          });
           msg.delete();
       }
       else if (webhookNumber === 1) {
         msg.channel.createWebhook({ name: 'VxT 2' }).then((webhook) => {
           webhook.send({
             content: vxMsg,
-            username: msg.author.username,
-            avatarURL: msg.author.displayAvatarURL()
-          })
+            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
+            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+          });
           msg.delete();
         }).catch(console.error)
       }
@@ -55,9 +54,9 @@ client.on('messageCreate', async (msg) => {
         msg.channel.createWebhook({ name: 'VxT 1' }).then((webhook) => {
           webhook.send({
             content: vxMsg,
-            username: msg.author.username,
-            avatarURL: msg.author.displayAvatarURL()
-          })
+            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
+            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+          });
           msg.delete();
         }).catch(console.error)
       }
