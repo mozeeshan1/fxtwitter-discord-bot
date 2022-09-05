@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "env:decrypt": "bash scripts/env-decrypt.sh",
-    "env:encrypt": "bash scripts/env-encrypt.sh"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",

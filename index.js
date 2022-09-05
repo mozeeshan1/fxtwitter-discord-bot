@@ -20,7 +20,7 @@ client.on('messageCreate', async (msg) => {
   if (msg.content === "ping") {
     msg.reply("pong");
   }
-  
+  console.log(msg.author);
   if (msg.content.match(/https:\/\/twitter.com/ig)) {
     let vxMsg = msg.content.replace(/twitter/g, 'vxtwitter');
     msg.channel.fetchWebhooks().then((webhooks) => {
@@ -37,7 +37,7 @@ client.on('messageCreate', async (msg) => {
           webhook.send({
             content: vxMsg,
             username: msg.author.username,
-            avatarURL: msg.author.avatarURL()
+            avatarURL: msg.author.displayAvatarURL()
           })
           msg.delete();
       }
@@ -46,7 +46,7 @@ client.on('messageCreate', async (msg) => {
           webhook.send({
             content: vxMsg,
             username: msg.author.username,
-            avatarURL: msg.author.avatarURL()
+            avatarURL: msg.author.displayAvatarURL()
           })
           msg.delete();
         }).catch(console.error)
@@ -56,7 +56,7 @@ client.on('messageCreate', async (msg) => {
           webhook.send({
             content: vxMsg,
             username: msg.author.username,
-            avatarURL: msg.author.avatarURL()
+            avatarURL: msg.author.displayAvatarURL()
           })
           msg.delete();
         }).catch(console.error)
