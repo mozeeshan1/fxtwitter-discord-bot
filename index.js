@@ -21,7 +21,7 @@ client.on('messageCreate', async (msg) => {
     msg.reply("pong");
   }
   if (msg.content.match(/https:\/\/twitter.com/ig)) {
-    let vxMsg = msg.content.replace(/twitter/g, 'c.vxtwitter');
+    let vxMsg = msg.content.replace(/twitter/g, 'fxtwitter');
     msg.channel.fetchWebhooks().then((webhooks) => {
       let webhookNumber=0;
       webhooks.forEach(webhook => {
