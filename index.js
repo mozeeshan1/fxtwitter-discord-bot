@@ -15,10 +15,6 @@ const client = new Client({
 
 
 
-
-
-
-
 client.on('messageCreate', async (msg) => {
   if (msg.webhookId) return;
   if (msg.content === "ping") {
@@ -95,4 +91,3 @@ client.on("ready", () => {
 
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
-//const mySecret = process.env['TOKEN'
