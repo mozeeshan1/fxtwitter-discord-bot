@@ -3,4 +3,4 @@
 set -e
 
 
-npx senv encrypt process.env > process.env.encrypted
+npx senv encrypt .env.process > .env.process.encrypted
