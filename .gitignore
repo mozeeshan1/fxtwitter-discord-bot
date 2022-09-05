@@ -1,2 +1,2 @@
-.env
+process.env
 .env.pass
