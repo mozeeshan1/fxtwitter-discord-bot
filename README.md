@@ -30,4 +30,4 @@ Discord bot token can be found here : https://discord.com/developers/application
 
 Go in the bot subsection of your application and get your token there. Make sure to **save your token in a secure place** in case you want to access it later as it is only shown once.
 
-For inquiries contact : Riko#4020 on discord
+For inquiries contact : Riko#4020 on discord.
