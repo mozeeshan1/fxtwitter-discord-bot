@@ -1,21 +1,20 @@
 # VxT-Bot
-Discord bot that converts twitter links to vxtwitter links in discord. 
+
+Discord bot that converts twitter links to vxtwitter links in discord.
 
 Invite link: https://discord.com/api/oauth2/authorize?client_id=1015497909925580830&permissions=412854217728&scope=bot
 
-
-
 You can use the code as you please.
 
-**You will need a JSON file named Config with your bot access token in a "TOKEN" key.** 
+**You will need a JSON file in your root directory named Config with your bot access token in a "TOKEN" key.**
 
-Example 
+Example
+
 ```
 {
     "TOKEN": "token here"
 }
 ```
-
 
 Discord bot token can be found here : https://discord.com/developers/applications/
 
