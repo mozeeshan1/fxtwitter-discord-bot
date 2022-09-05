@@ -1,4 +1,5 @@
-import * as Config from "./config.env"
+
+const Config= require("./config.json")
 
 const { Client, GatewayIntentBits } = require("discord.js");
 const client = new Client({
