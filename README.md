@@ -1,6 +1,4 @@
-# VxT-Bot
-
-## FxTwitter discord bot
+# FxTwitter discord bot
 
 
 A discord bot that converts twitter links to fxtwitter links. Fxtwitter link provides better embeds than default twitter embeds. No commands required, just add to server and use. It deletes your message and uses webhooks to copy your display name and avatar in a server and sends it with those attached to the webhook (refer to example).
