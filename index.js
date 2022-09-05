@@ -1,4 +1,6 @@
- const { Client, GatewayIntentBits } = require("discord.js");
+import * as Config from "./config.env"
+
+const { Client, GatewayIntentBits } = require("discord.js");
 const client = new Client({
   'intents': [
     GatewayIntentBits.Guilds,
@@ -91,5 +93,5 @@ client.on("ready", () => {
 
 
 // client.on("debug", ( e ) => console.log(e));
-client.login(process.env['TOKEN'])
+client.login(Config["TOKEN"]);
 //const mySecret = process.env['TOKEN'
