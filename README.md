@@ -6,11 +6,15 @@ Invite link: https://discord.com/api/oauth2/authorize?client_id=1015497909925580
 
 
 You can use the code as you please.
+
 **You will need a JSON file named Config with your bot access token in a "TOKEN" key.** 
+
 Example 
-```{
+```
+{
     "TOKEN": "token here"
-    }```
+}
+```
 
 
 Discord bot token can be found here : https://discord.com/developers/applications/
