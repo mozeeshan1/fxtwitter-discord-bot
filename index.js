@@ -12,8 +12,8 @@ client.on("messageCreate", async (msg) => {
     if (msg.content === "ping") {
       msg.reply("pong");
     }
-    if (msg.content.match(/http(s)*:\/\/(www.)*twitter.com/gi)) {
-      let vxMsg = msg.content.replace(/twitter/g, "fxtwitter");
+    if (msg.content.match(/http(s)*:\/\/(www.)*(mobile.)*twitter.com/gi)) {
+      let vxMsg = msg.content.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
       let msgAttachments = [];
       for (let attch of msg.attachments) {
         msgAttachments.push(attch[1].url);
