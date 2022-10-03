@@ -8,7 +8,7 @@ const client = new Client({
 client.on("messageCreate", async (msg) => {
   try {
     if (msg.webhookId) return;
-    // console.log(msg.attachments);
+    // console.log(msg.channel.type)
     if (msg.content === "ping") {
       msg.reply("pong");
     }
@@ -18,11 +18,10 @@ client.on("messageCreate", async (msg) => {
       for (let attch of msg.attachments) {
         msgAttachments.push(attch[1].url);
       }
-      if (msg.channel.type === 11) {
+      if (msg.channel.type === 10 || msg.channel.type === 11 || msg.channel.type === 12) {
         client.guilds.cache
           .get(msg.guildId)
-          .channels.cache.get(msg.channel.parentId)
-          .fetchWebhooks()
+          .channels.fetchWebhooks(msg.channel.parentId)
           .then((webhooks) => {
             let webhookNumber = 0;
             webhooks.forEach((webhook) => {
@@ -42,8 +41,8 @@ client.on("messageCreate", async (msg) => {
               });
               msg.delete();
             } else if (webhookNumber === 1) {
-              msg.channel
-                .createWebhook({ name: "VxT 2" })
+              msg.guild.channels
+                .createWebhook({ channel: msg.channel.parentId, name: "VxT 2" })
                 .then((webhook) => {
                   webhook.send({
                     content: vxMsg,
@@ -56,8 +55,8 @@ client.on("messageCreate", async (msg) => {
                 })
                 .catch(console.error);
             } else if (webhookNumber === 0) {
-              msg.channel
-                .createWebhook({ name: "VxT 1" })
+              msg.guild.channels
+                .createWebhook({ channel: msg.channel.parentId, name: "VxT 1" })
                 .then((webhook) => {
                   webhook.send({
                     content: vxMsg,
