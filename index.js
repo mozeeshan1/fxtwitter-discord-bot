@@ -1,11 +1,19 @@
 const Config = require("./config.json");
 
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, SlashCommandBuilder,Events,REST,Routes } = require("discord.js");
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations],
 });
+const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
+const pingCommand = new SlashCommandBuilder()
+  .setName("ping")
+  .setDescription("Replies with pong");
+
+
+
 
 client.on("messageCreate", async (msg) => {
+  
   try {
     if (msg.webhookId) return;
     // console.log(msg.channel.type)
@@ -135,10 +143,25 @@ function getRandomItem(set) {
   });
   return filtereditems[Math.floor(Math.random() * filtereditems.length)];
 }
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
 
+  if (interaction.commandName === "ping") {
+    await interaction.reply({ content: "Pong!"});
+  }
+});
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
-
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
+
+//registering slash commands here
+(async () => {
+  try {
+    const data = await rest.put(Routes.applicationCommands(Config["Client ID"]), { body: [pingCommand] });
+    console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+  } catch (error) {
+    console.error(error);
+  }
+})();
