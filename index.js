@@ -152,6 +152,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
+  client.user.setActivity(+client.guilds.cache.size > 1 ? `Currently in ${client.guilds.cache.size} servers` : `Currently in ${client.guilds.cache.size} server`);
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
