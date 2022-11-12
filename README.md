@@ -16,18 +16,19 @@ Example:
 
 You can use this for your projects. 
 
-**You will need a JSON file in your root directory named Config with your bot access token in a "TOKEN" key.**
+**You will need a JSON file in your root directory named Config with your bot access token in a "TOKEN" key and your application ID in a "Client ID" key.**
 
 Example
 
 ```
 {
-    "TOKEN": "token here"
+    "TOKEN": "token here",
+    "Client ID": "application id here"
 }
 ```
 
 Discord bot token can be found here : https://discord.com/developers/applications/
 
-Go in the bot subsection of your application and get your token there. Make sure to **save your token in a secure place** in case you want to access it later as it is only shown once.
+Go in the bot section of your application and get your token there. Make sure to **save your token in a secure place** in case you want to access it later as it is only shown once. The application ID is in the general information section of your application.
 
 For inquiries contact : Riko#4020 on discord.
