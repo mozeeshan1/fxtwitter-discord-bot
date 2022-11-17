@@ -46,7 +46,7 @@ client.on("messageCreate", async (msg) => {
       let vxMsg = msg.content.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
       let msgAttachments = [];
       let allowedMentionsObject={}
-      if (removeMentionPresent[msg.guildId]&&(msg.mentions.everyone||msg.mentions.users.size>0||msg.mentions.roles.size>0)) {
+      if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
         let removeFile = {};
         try {
           removeFile = JSON.parse(pako.inflate(fs.readFileSync("remove-lists.txt"), { to: "string" }));
@@ -55,9 +55,7 @@ client.on("messageCreate", async (msg) => {
         }
         let tempRemoveObject = removeFile[msg.guildId];
 
-        
-        allowedMentionsObject=MentionAllower(tempRemoveObject,msg.mentions);
-        
+        allowedMentionsObject = MentionAllower(tempRemoveObject, msg.mentions, msg.content);
       }
       for (let attch of msg.attachments) {
         msgAttachments.push(attch[1].url);
@@ -519,7 +517,7 @@ client.on("ready", () => {
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
 
-function MentionAllower(tRO, msgMentions) {
+function MentionAllower(tRO, msgMentions,msgContent) {
   let aMO = { parse: ["everyone", "roles", "users"], roles: [], users: [] };
   for (let tempElem of tRO.all) {
     if (tempElem === "all") {
@@ -532,7 +530,7 @@ function MentionAllower(tRO, msgMentions) {
     }
   }
   if (tRO.mentions.length > 0 && aMO.parse.length > 0) {
-    if (msgMentions.everyone && tRO.mentions.some((elem) => elem.type === "everyone")) {
+    if ((msgMentions.everyone || /@everyone|@here/gi.test(msgContent)) && tRO.mentions.some((elem) => elem.type === "everyone")) {
       aMO.parse.splice(aMO.parse.indexOf("everyone"), 1);
     }
     if (msgMentions.roles.size > 0 && aMO.parse.includes("roles")) {
