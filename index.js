@@ -47,7 +47,6 @@ client.on("messageCreate", async (msg) => {
       let msgAttachments = [];
       let allowedMentionsObject={}
       if (removeMentionPresent[msg.guildId]&&(msg.mentions.everyone||msg.mentions.users.size>0||msg.mentions.roles.size>0)) {
-        console.log("IN REMOVE MENTIONS MSG");
         let removeFile = {};
         try {
           removeFile = JSON.parse(pako.inflate(fs.readFileSync("remove-lists.txt"), { to: "string" }));
@@ -60,7 +59,6 @@ client.on("messageCreate", async (msg) => {
         allowedMentionsObject=MentionAllower(tempRemoveObject,msg.mentions);
         
       }
-
       for (let attch of msg.attachments) {
         msgAttachments.push(attch[1].url);
       }
@@ -547,10 +545,9 @@ function MentionAllower(tRO, msgMentions) {
     }
     if (msgMentions.users.size > 0 && aMO.parse.includes("users")) {
       aMO.parse.splice(aMO.parse.indexOf("users"), 1);
-      for (let tempRole of msgMentions.users) {
-        if (!tRO.mentions.some((elem) => elem.data === tempRole[0])) {
-          console.log(tempRole[0]);
-          aMO.users.push(tempRole[0]);
+      for (let tempUser of msgMentions.users) {
+        if (!tRO.mentions.some((elem) => elem.data === tempUser[0])) {
+          aMO.users.push(tempUser[0]);
         }
       }
     }
