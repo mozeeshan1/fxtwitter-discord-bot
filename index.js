@@ -32,10 +32,12 @@ let removeMentionPresent = {};
 let userList = {};
 let roleList = {};
 
+
+
 client.on("messageCreate", async (msg) => {
   try {
     if (msg.webhookId) return;
-    // console.log(msg.content);
+    // console.log(msg.mentions);
     tempMessage = msg;
     if (msg.content === "ping") {
       msg.reply("pong");
@@ -43,8 +45,9 @@ client.on("messageCreate", async (msg) => {
     if (msg.content.match(/http(s)*:\/\/(www.)*(mobile.)*twitter.com/gi)) {
       let vxMsg = msg.content.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
       let msgAttachments = [];
-      let allowedMentionsObject = { parse: ["everyone", "roles", "users"], users: userList[msg.guildId], roles: roleList[msg.guildId] };
-      if (removeMentionPresent[msg.guildId]) {
+      let allowedMentionsObject={}
+      if (removeMentionPresent[msg.guildId]&&(msg.mentions.everyone||msg.mentions.users.size>0||msg.mentions.roles.size>0)) {
+        console.log("IN REMOVE MENTIONS MSG");
         let removeFile = {};
         try {
           removeFile = JSON.parse(pako.inflate(fs.readFileSync("remove-lists.txt"), { to: "string" }));
@@ -53,105 +56,10 @@ client.on("messageCreate", async (msg) => {
         }
         let tempRemoveObject = removeFile[msg.guildId];
 
-        if (tempRemoveObject.all.length > 0 && tempRemoveObject.mentions.length > 0) {
-          for (let allElem of tempRemoveObject.all) {
-            if (allElem === "all") {
-              allowedMentionsObject.parse = [];
-              break;
-            } else if (allElem === "roles") {
-              allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("roles"), 1);
-              allowedMentionsObject.roles = [];
-            } else if (allElem === "users") {
-              allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("users"), 1);
-              allowedMentionsObject.users = [];
-            }
-          }
-
-          for (let mentionsElem of tempRemoveObject.mentions) {
-            if (mentionsElem.type === "everyone") {
-              allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("everyone"), 1);
-            } else if (mentionsElem.type === "role") {
-              allowedMentionsObject.roles.splice(allowedMentionsObject.roles.indexOf(mentionsElem.data), 1);
-            } else if (mentionsElem.type === "user") {
-              allowedMentionsObject.users.splice(allowedMentionsObject.users.indexOf(mentionsElem.data), 1);
-            }
-          }
-          if (allowedMentionsObject.parse.length === 0) {
-            allowedMentionsObject.roles = [];
-            allowedMentionsObject.users = [];
-          }
-          if (allowedMentionsObject.parse.includes("roles") && !tempRemoveObject.mentions.some((elem) => elem.type === "role")) {
-            allowedMentionsObject.roles = [];
-          } else if (allowedMentionsObject.parse.includes("roles") && tempRemoveObject.mentions.some((elem) => elem.type === "role")) {
-            allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("roles"), 1);
-          }
-          if (allowedMentionsObject.parse.includes("users") && !tempRemoveObject.mentions.some((elem) => elem.type === "user")) {
-            allowedMentionsObject.users = [];
-          } else if (allowedMentionsObject.parse.includes("users") && tempRemoveObject.mentions.some((elem) => elem.type === "user")) {
-            allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("users"), 1);
-          }
-        } else if (tempRemoveObject.all.length > 0) {
-          for (let allElem of tempRemoveObject.all) {
-            if (allElem === "all") {
-              allowedMentionsObject.parse = [];
-              break;
-            } else if (allElem === "roles") {
-              allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("roles"), 1);
-              allowedMentionsObject.roles = [];
-            } else if (allElem === "users") {
-              allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("users"), 1);
-              allowedMentionsObject.users = [];
-            }
-          }
-          if (allowedMentionsObject.parse.length === 0) {
-            allowedMentionsObject.roles = [];
-            allowedMentionsObject.users = [];
-          }
-          if (allowedMentionsObject.parse.includes("roles")) {
-            allowedMentionsObject.roles = [];
-          }
-          if (allowedMentionsObject.parse.includes("users")) {
-            allowedMentionsObject.users = [];
-          }
-        } else if (tempRemoveObject.mentions.length > 0) {
-          for (let mentionsElem of tempRemoveObject.mentions) {
-            if (mentionsElem.type === "everyone") {
-              allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("everyone"), 1);
-            } else if (mentionsElem.type === "role") {
-              allowedMentionsObject.roles.splice(allowedMentionsObject.roles.indexOf(mentionsElem.data), 1);
-            } else if (mentionsElem.type === "user") {
-              allowedMentionsObject.users.splice(allowedMentionsObject.users.indexOf(mentionsElem.data), 1);
-            }
-          }
-          if (allowedMentionsObject.parse.includes("roles") && !tempRemoveObject.mentions.some((elem) => elem.type === "role")) {
-            allowedMentionsObject.roles = [];
-          } else if (allowedMentionsObject.parse.includes("roles") && tempRemoveObject.mentions.some((elem) => elem.type === "role")) {
-            allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("roles"), 1);
-          }
-          if (allowedMentionsObject.parse.includes("users") && !tempRemoveObject.mentions.some((elem) => elem.type === "user")) {
-            allowedMentionsObject.users = [];
-          } else if (allowedMentionsObject.parse.includes("users") && tempRemoveObject.mentions.some((elem) => elem.type === "user")) {
-            allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("users"), 1);
-          }
-        }else{
-          if (allowedMentionsObject.parse.includes("roles") && !tempRemoveObject.mentions.some((elem) => elem.type === "role")) {
-            allowedMentionsObject.roles = [];
-          } else if (allowedMentionsObject.parse.includes("roles") && tempRemoveObject.mentions.some((elem) => elem.type === "role")) {
-            allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("roles"), 1);
-          }
-          if (allowedMentionsObject.parse.includes("users") && !tempRemoveObject.mentions.some((elem) => elem.type === "user")) {
-            allowedMentionsObject.users = [];
-          } else if (allowedMentionsObject.parse.includes("users") && tempRemoveObject.mentions.some((elem) => elem.type === "user")) {
-            allowedMentionsObject.parse.splice(allowedMentionsObject.parse.indexOf("users"), 1);
-          }
-        }
+        
+        allowedMentionsObject=MentionAllower(tempRemoveObject,msg.mentions);
+        
       }
-      else{
-
-          allowedMentionsObject.roles = [];
-          allowedMentionsObject.users = [];
-      }
-
 
       for (let attch of msg.attachments) {
         msgAttachments.push(attch[1].url);
@@ -612,6 +520,43 @@ client.on("ready", () => {
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
+
+function MentionAllower(tRO, msgMentions) {
+  let aMO = { parse: ["everyone", "roles", "users"], roles: [], users: [] };
+  for (let tempElem of tRO.all) {
+    if (tempElem === "all") {
+      aMO.parse = [];
+      return aMO;
+    } else if (tempElem === "roles") {
+      aMO.parse.splice(aMO.parse.indexOf("roles"), 1);
+    } else if (tempElem === "users") {
+      aMO.parse.splice(aMO.parse.indexOf("users"), 1);
+    }
+  }
+  if (tRO.mentions.length > 0 && aMO.parse.length > 0) {
+    if (msgMentions.everyone && tRO.mentions.some((elem) => elem.type === "everyone")) {
+      aMO.parse.splice(aMO.parse.indexOf("everyone"), 1);
+    }
+    if (msgMentions.roles.size > 0 && aMO.parse.includes("roles")) {
+      aMO.parse.splice(aMO.parse.indexOf("roles"), 1);
+      for (let tempRole of msgMentions.roles) {
+        if (!tRO.mentions.some((elem) => elem.data === tempRole[0])) {
+          aMO.roles.push(tempRole[0]);
+        }
+      }
+    }
+    if (msgMentions.users.size > 0 && aMO.parse.includes("users")) {
+      aMO.parse.splice(aMO.parse.indexOf("users"), 1);
+      for (let tempRole of msgMentions.users) {
+        if (!tRO.mentions.some((elem) => elem.data === tempRole[0])) {
+          console.log(tempRole[0]);
+          aMO.users.push(tempRole[0]);
+        }
+      }
+    }
+  }
+  return aMO;
+}
 
 function CheckRemoveMentions(GID) {
   const guild = client.guilds.cache.get(GID);
