@@ -45,7 +45,7 @@ client.on("messageCreate", async (msg) => {
     if (msg.content.match(/http(s)*:\/\/(www.)*(mobile.)*twitter.com/gi)) {
       let vxMsg = msg.content.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
       let msgAttachments = [];
-      let allowedMentionsObject={}
+      let allowedMentionsObject={parse:[]}
       if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
         let removeFile = {};
         try {
