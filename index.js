@@ -4,7 +4,7 @@ const pako = require("pako");
 
 const { Client, GatewayIntentBits, SlashCommandBuilder, Events, REST, Routes, PermissionFlagsBits, roleMention, userMention } = require("discord.js");
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildPresences],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences],
 });
 const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
 const pingCommand = new SlashCommandBuilder().setName("ping").setDescription("Replies with pong");
@@ -25,6 +25,12 @@ const mentionRemoveCommand = new SlashCommandBuilder()
       .addStringOption((option) => option.setName("groups").setDescription("The groups to removed.").setRequired(true).addChoices({ name: "all", value: "all" }, { name: "roles", value: "roles" }, { name: "users", value: "users" }))
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const fxToggleCommand = new SlashCommandBuilder()
+  .setName("toggle")
+  .setDescription("Convert links for tweets including. On by default.")
+  .addStringOption((option) => option.setName("type").setDescription("The types of tweets to be converted").setRequired(true).addChoices({ name: "text", value: "text" }, { name: "photos", value: "photos" }, { name: "videos", value: "videos" }, { name: "polls", value: "polls" }, { name: "all", value: "all" }))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand];
 
 // make message collector for interaction reply
 let tempMessage = null;
@@ -32,20 +38,65 @@ let removeMentionPresent = {};
 let userList = {};
 let roleList = {};
 
-
-
 client.on("messageCreate", async (msg) => {
   try {
+    // console.log(msg.embeds[0]);
+
     if (msg.webhookId) return;
-    // console.log(msg.mentions);
     tempMessage = msg;
     if (msg.content === "ping") {
       msg.reply("pong");
     }
-    if (msg.content.match(/http(s)*:\/\/(www.)*(mobile.)*twitter.com/gi)) {
-      let vxMsg = msg.content.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+
+    if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gi)) {
+      let vxMsg = msg.content;
       let msgAttachments = [];
-      let allowedMentionsObject={parse:[]}
+      let allowedMentionsObject = { parse: [] };
+
+      let toggleFile = {};
+      try {
+        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+      } catch (err) {
+        console.log("Error in text read file sync msg toggle", err.code);
+      }
+      let toggleObj = toggleFile[msg.guildId];
+      if (Object.values(toggleObj).every((val) => val === false)) {
+        return;
+      } 
+      else if (Object.values(toggleObj).some((val) => val === false)) {
+        let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+        let replaceTwitterLinks = [];
+        for (let i of twitterLinks) {
+          let j = i.substr(i.indexOf("status/") + 7);
+          let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+          await fetch(fxAPIUrl)
+            .then((response) => {
+              return response.json();
+            })
+            .then((data) => {
+              if (data.tweet.hasOwnProperty("media")) {
+                if (data.tweet.media.hasOwnProperty("photos") && toggleObj.photos) {
+                  replaceTwitterLinks.push(i);
+                } else if (data.tweet.media.hasOwnProperty("videos") && toggleObj.videos) {
+                  replaceTwitterLinks.push(i);
+                }
+              } else if (data.tweet.hasOwnProperty("poll") && toggleObj.polls) {
+                replaceTwitterLinks.push(i);
+              } else if (!(data.tweet.hasOwnProperty("media") || data.tweet.hasOwnProperty("poll")) && toggleObj.text) {
+                replaceTwitterLinks.push(i);
+              }
+            });
+        }
+        for (let j of replaceTwitterLinks) {
+          let tempFXLink = j.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+          vxMsg = vxMsg.replaceAll(j, tempFXLink);
+        }
+      } else {
+        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+      }
+      if (!/fxtwitter\.com/gim.test(vxMsg)) {
+        return;
+      }
       if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
         let removeFile = {};
         try {
@@ -176,7 +227,6 @@ client.on("messageCreate", async (msg) => {
   }
 });
 
-
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -184,6 +234,141 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await interaction.reply({ content: "Pong!" });
     return;
   }
+
+  if (interaction.commandName === "toggle") {
+    let type = interaction.options.getString("type");
+    let interactionGuildID = interaction.guildId;
+    if (type === "all") {
+      let toggleFile = {};
+      try {
+        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+      } catch (err) {
+        console.log("Error in all read file sync toggle", err.code);
+      }
+      let toggleObj = toggleFile[interactionGuildID];
+
+      if (toggleObj) {
+        if (Object.values(toggleObj).some((val) => val === true)) {
+          Object.keys(toggleObj).forEach((key) => {
+            toggleObj[key] = false;
+          });
+        } else {
+          Object.keys(toggleObj).forEach((key) => {
+            toggleObj[key] = true;
+          });
+        }
+      } else {
+        toggleObj = { text: false, photos: false, videos: false, polls: false };
+      }
+
+      toggleFile[interactionGuildID] = toggleObj;
+      fs.writeFile("toggle-list.txt", pako.deflate(JSON.stringify(toggleFile)), { encoding: "utf8" }, async (err) => {
+        if (err) {
+          console.log("error in file writing in all toggle   ", err.code);
+        } else {
+          await interaction.reply({ content: `Toggled all conversions ${Object.values(toggleObj).some((val) => val === true) ? `on` : `off`}` });
+          return;
+        }
+      });
+    } else if (type === "text") {
+      let toggleFile = {};
+      try {
+        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+      } catch (err) {
+        console.log("Error in text read file sync toggle", err.code);
+      }
+      let toggleObj = toggleFile[interactionGuildID];
+
+      if (toggleObj) {
+        toggleObj.text ? (toggleObj.text = false) : (toggleObj.text = true);
+      } else {
+        toggleObj = { text: false, photos: true, videos: true, polls: true };
+      }
+
+      toggleFile[interactionGuildID] = toggleObj;
+      fs.writeFile("toggle-list.txt", pako.deflate(JSON.stringify(toggleFile)), { encoding: "utf8" }, async (err) => {
+        if (err) {
+          console.log("error in file writing in text toggle   ", err.code);
+        } else {
+          await interaction.reply({ content: `Toggled all text conversions ${toggleObj.text ? `on` : `off`}` });
+          return;
+        }
+      });
+    } else if (type === "photos") {
+      let toggleFile = {};
+      try {
+        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+      } catch (err) {
+        console.log("Error in photos read file sync toggle", err.code);
+      }
+      let toggleObj = toggleFile[interactionGuildID];
+
+      if (toggleObj) {
+        toggleObj.photos ? (toggleObj.photos = false) : (toggleObj.photos = true);
+      } else {
+        toggleObj = { text: true, photos: false, videos: true, polls: true };
+      }
+
+      toggleFile[interactionGuildID] = toggleObj;
+      fs.writeFile("toggle-list.txt", pako.deflate(JSON.stringify(toggleFile)), { encoding: "utf8" }, async (err) => {
+        if (err) {
+          console.log("error in file writing in photos toggle   ", err.code);
+        } else {
+          await interaction.reply({ content: `Toggled all photo conversions ${toggleObj.photos ? `on` : `off`}` });
+          return;
+        }
+      });
+    } else if (type === "videos") {
+      let toggleFile = {};
+      try {
+        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+      } catch (err) {
+        console.log("Error in videos read file sync toggle", err.code);
+      }
+      let toggleObj = toggleFile[interactionGuildID];
+
+      if (toggleObj) {
+        toggleObj.videos ? (toggleObj.videos = false) : (toggleObj.videos = true);
+      } else {
+        toggleObj = { text: true, photos: true, videos: false, polls: true };
+      }
+
+      toggleFile[interactionGuildID] = toggleObj;
+      fs.writeFile("toggle-list.txt", pako.deflate(JSON.stringify(toggleFile)), { encoding: "utf8" }, async (err) => {
+        if (err) {
+          console.log("error in file writing in videos toggle   ", err.code);
+        } else {
+          await interaction.reply({ content: `Toggled all video conversions ${toggleObj.videos ? `on` : `off`}` });
+          return;
+        }
+      });
+    } else if (type === "polls") {
+      let toggleFile = {};
+      try {
+        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+      } catch (err) {
+        console.log("Error in polls read file sync toggle", err.code);
+      }
+      let toggleObj = toggleFile[interactionGuildID];
+
+      if (toggleObj) {
+        toggleObj.polls ? (toggleObj.polls = false) : (toggleObj.polls = true);
+      } else {
+        toggleObj = { text: true, photos: true, videos: true, polls: false };
+      }
+
+      toggleFile[interactionGuildID] = toggleObj;
+      fs.writeFile("toggle-list.txt", pako.deflate(JSON.stringify(toggleFile)), { encoding: "utf8" }, async (err) => {
+        if (err) {
+          console.log("error in file writing in polls toggle   ", err.code);
+        } else {
+          await interaction.reply({ content: `Toggled all poll conversions ${toggleObj.polls ? `on` : `off`}` });
+          return;
+        }
+      });
+    }
+  }
+
   const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
   const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
   collector.once("collect", async (message) => {
@@ -512,12 +697,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
   client.user.setActivity(+client.guilds.cache.size > 1 ? `Currently in ${client.guilds.cache.size} servers` : `Currently in ${client.guilds.cache.size} server`);
-  client.guilds.cache.forEach((guild) => (removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id)));
+  InitToggleList();
+  client.guilds.cache.forEach((guild) => {
+    removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
+  });
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
 
-function MentionAllower(tRO, msgMentions,msgContent) {
+function InitToggleList() {
+  let toggleFile = {};
+  try {
+    toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in all read file sync toggle", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!toggleFile[guild.id]) {
+      toggleFile[guild.id] = { text: true, photos: true, videos: true, polls: true };
+    }
+  });
+  fs.writeFile("toggle-list.txt", pako.deflate(JSON.stringify(toggleFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init toggle list", err.code);
+    }
+  });
+}
+
+function MentionAllower(tRO, msgMentions, msgContent) {
   let aMO = { parse: ["everyone", "roles", "users"], roles: [], users: [] };
   for (let tempElem of tRO.all) {
     if (tempElem === "all") {
@@ -605,7 +812,7 @@ function getRandomItem(set) {
 //registering slash commands here
 (async () => {
   try {
-    const data = await rest.put(Routes.applicationCommands(Config["Client ID"]), { body: [pingCommand, mentionRemoveCommand] });
+    const data = await rest.put(Routes.applicationCommands(Config["Client ID"]), { body: globalCommandsBody });
     console.log(`Successfully reloaded ${data.length} application (/) commands.`);
   } catch (error) {
     console.error(error);
