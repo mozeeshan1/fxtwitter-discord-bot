@@ -30,19 +30,26 @@ const fxToggleCommand = new SlashCommandBuilder()
   .setDescription("Convert links for tweets including. On by default.")
   .addStringOption((option) => option.setName("type").setDescription("The types of tweets to be converted").setRequired(true).addChoices({ name: "text", value: "text" }, { name: "photos", value: "photos" }, { name: "videos", value: "videos" }, { name: "polls", value: "polls" }, { name: "all", value: "all" }))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand];
+const messageControlCommand = new SlashCommandBuilder()
+  .setName("message")
+  .setDescription("Control message behaviour.")
+  .addSubcommand((subcommand) => subcommand.setName("deleteoriginal").setDescription("Toggle the deletion of the original message. On by default."))
+  .addSubcommand((subcommand) => subcommand.setName("otherwebhooks").setDescription("Toggle operation on webhooks from other bots. Off by default."))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand];
 
 // make message collector for interaction reply
 let tempMessage = null;
 let removeMentionPresent = {};
 let userList = {};
 let roleList = {};
+let messageControlList = {};
 
 client.on("messageCreate", async (msg) => {
   try {
     // console.log(msg.embeds[0]);
-
-    if (msg.webhookId) return;
+    if (messageControlList[msg.guildId].otherWebhooks && msg.webhookId &&msg.type!==20&& (await msg.fetchWebhook()).owner.id === client.user.id) return;
+    else if (!messageControlList[msg.guildId].otherWebhooks && msg.webhookId) return;
     tempMessage = msg;
     if (msg.content === "ping") {
       msg.reply("pong");
@@ -62,8 +69,7 @@ client.on("messageCreate", async (msg) => {
       let toggleObj = toggleFile[msg.guildId];
       if (Object.values(toggleObj).every((val) => val === false)) {
         return;
-      } 
-      else if (Object.values(toggleObj).some((val) => val === false)) {
+      } else if (Object.values(toggleObj).some((val) => val === false)) {
         let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
         let replaceTwitterLinks = [];
         for (let i of twitterLinks) {
@@ -133,7 +139,7 @@ client.on("messageCreate", async (msg) => {
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
-              msg.delete();
+              if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
             } else if (webhookNumber === 1) {
               msg.guild.channels
                 .createWebhook({ channel: msg.channel.parentId, name: "VxT 2" })
@@ -146,7 +152,7 @@ client.on("messageCreate", async (msg) => {
                     files: msgAttachments,
                     allowedMentions: allowedMentionsObject,
                   });
-                  msg.delete();
+                  if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
                 })
                 .catch(console.error);
             } else if (webhookNumber === 0) {
@@ -161,7 +167,7 @@ client.on("messageCreate", async (msg) => {
                     files: msgAttachments,
                     allowedMentions: allowedMentionsObject,
                   });
-                  msg.delete();
+                  if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
                 })
                 .catch(console.error);
             } else {
@@ -187,7 +193,7 @@ client.on("messageCreate", async (msg) => {
             files: msgAttachments,
             allowedMentions: allowedMentionsObject,
           });
-          msg.delete();
+          if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
         } else if (webhookNumber === 1) {
           msg.channel
             .createWebhook({ name: "VxT 2" })
@@ -199,7 +205,7 @@ client.on("messageCreate", async (msg) => {
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
-              msg.delete();
+              if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
             })
             .catch(console.error);
         } else if (webhookNumber === 0) {
@@ -213,7 +219,7 @@ client.on("messageCreate", async (msg) => {
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
-              msg.delete();
+              if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
             })
             .catch(console.error);
         } else {
@@ -368,10 +374,59 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
   }
+  const filter1 = (tempMessage) => tempMessage.author.id === interaction.user.id;
+  const collector1 = interaction.channel.createMessageCollector(filter1, { max: 1, time: 15000 });
+  collector1.once("collect", async (message) => {
+    messageControlList[message.guildId] = CheckMessageControls(message.guildId);
+  });
+  if (interaction.commandName === "message" && interaction.options.getSubcommand() === "deleteoriginal") {
+    let messageControlFile = {};
+    let interactionGuildID = interaction.guildId;
+    try {
+      messageControlFile = JSON.parse(pako.inflate(fs.readFileSync("message-control-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in message control list read delete orignal", err.code);
+    }
+    if (messageControlFile.hasOwnProperty(interactionGuildID)) {
+      messageControlFile[interactionGuildID].deleteOriginal = !messageControlFile[interactionGuildID].deleteOriginal;
+    } else {
+      messageControlFile[interactionGuildID] = { deleteOriginal: true, otherWebhooks: false };
+    }
+    fs.writeFile("message-control-list.txt", pako.deflate(JSON.stringify(messageControlFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in message control list delete orignal    ", err.code);
+      } else {
+        await interaction.reply({ content: `Toggled delete original message ${messageControlFile[interactionGuildID].deleteOriginal ? "on" : "off"}.` });
+        return;
+      }
+    });
+  }
+  if (interaction.commandName === "message" && interaction.options.getSubcommand() === "otherwebhooks") {
+    let messageControlFile = {};
+    let interactionGuildID = interaction.guildId;
+    try {
+      messageControlFile = JSON.parse(pako.inflate(fs.readFileSync("message-control-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in message control list read other webhooks", err.code);
+    }
+    if (messageControlFile.hasOwnProperty(interactionGuildID)) {
+      messageControlFile[interactionGuildID].otherWebhooks = !messageControlFile[interactionGuildID].otherWebhooks;
+    } else {
+      messageControlFile[interactionGuildID] = { deleteOriginal: true, otherWebhooks: false };
+    }
+    fs.writeFile("message-control-list.txt", pako.deflate(JSON.stringify(messageControlFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in message control list other webhooks  ", err.code);
+      } else {
+        await interaction.reply({ content: `Toggled the operation on other webhooks ${messageControlFile[interactionGuildID].otherWebhooks ? "on" : "off"}.` });
+        return;
+      }
+    });
+  }
 
-  const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
-  const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
-  collector.once("collect", async (message) => {
+  const filter2 = (tempMessage) => tempMessage.author.id === interaction.user.id;
+  const collector2 = interaction.channel.createMessageCollector(filter2, { max: 1, time: 15000 });
+  collector2.once("collect", async (message) => {
     removeMentionPresent[message.guildId] = CheckRemoveMentions(message.guildId);
   });
 
@@ -698,19 +753,41 @@ client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
   client.user.setActivity(+client.guilds.cache.size > 1 ? `Currently in ${client.guilds.cache.size} servers` : `Currently in ${client.guilds.cache.size} server`);
   InitToggleList();
-  client.guilds.cache.forEach((guild) => {
-    removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
-  });
+  InitMessageControlList();
+  setTimeout(() => {
+    client.guilds.cache.forEach((guild) => {
+      removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
+      messageControlList[guild.id] = CheckMessageControls(guild.id);
+    });
+  }, 100);
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
 
+function InitMessageControlList() {
+  let messageControlFile = {};
+  try {
+    messageControlFile = JSON.parse(pako.inflate(fs.readFileSync("message-control-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in message control list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!messageControlFile.hasOwnProperty(guild.id)) {
+      messageControlFile[guild.id] = { deleteOriginal: true, otherWebhooks: false };
+    }
+  });
+  fs.writeFile("message-control-list.txt", pako.deflate(JSON.stringify(messageControlFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init message control list write", err.code);
+    }
+  });
+}
 function InitToggleList() {
   let toggleFile = {};
   try {
     toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
   } catch (err) {
-    console.log("Error in all read file sync toggle", err.code);
+    console.log("Error in init file sync read", err.code);
   }
   client.guilds.cache.forEach((guild) => {
     if (!toggleFile[guild.id]) {
@@ -758,6 +835,15 @@ function MentionAllower(tRO, msgMentions, msgContent) {
     }
   }
   return aMO;
+}
+function CheckMessageControls(GID) {
+  let messageControlFile = {};
+  try {
+    messageControlFile = JSON.parse(pako.inflate(fs.readFileSync("message-control-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in check message control read", err.code);
+  }
+  return messageControlFile[GID] || false;
 }
 
 function CheckRemoveMentions(GID) {
