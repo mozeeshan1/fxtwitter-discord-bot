@@ -3,6 +3,7 @@ const fs = require("fs");
 const pako = require("pako");
 
 const { Client, GatewayIntentBits, SlashCommandBuilder, Events, REST, Routes, PermissionFlagsBits, roleMention, userMention } = require("discord.js");
+const { log } = require("console");
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences],
 });
@@ -47,14 +48,13 @@ let messageControlList = {};
 
 client.on("messageCreate", async (msg) => {
   try {
-    // console.log(msg.embeds[0]);
+    // console.log(msg.content);
     if (messageControlList[msg.guildId].otherWebhooks && msg.webhookId &&msg.type!==20&& (await msg.fetchWebhook()).owner.id === client.user.id) return;
     else if (!messageControlList[msg.guildId].otherWebhooks && msg.webhookId) return;
     tempMessage = msg;
     if (msg.content === "ping") {
       msg.reply("pong");
     }
-
     if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gi)) {
       let vxMsg = msg.content;
       let msgAttachments = [];
@@ -133,8 +133,8 @@ client.on("messageCreate", async (msg) => {
               let webhook = getRandomItem(webhooks)[1];
               webhook.send({
                 content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL():msg.author.displayAvatarURL(),
                 threadId: msg.channelId,
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
@@ -146,8 +146,8 @@ client.on("messageCreate", async (msg) => {
                 .then((webhook) => {
                   webhook.send({
                     content: vxMsg,
-                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
-                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
                     threadId: msg.channelId,
                     files: msgAttachments,
                     allowedMentions: allowedMentionsObject,
@@ -161,8 +161,8 @@ client.on("messageCreate", async (msg) => {
                 .then((webhook) => {
                   webhook.send({
                     content: vxMsg,
-                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
-                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
                     threadId: msg.channelId,
                     files: msgAttachments,
                     allowedMentions: allowedMentionsObject,
@@ -188,8 +188,8 @@ client.on("messageCreate", async (msg) => {
           let webhook = getRandomItem(webhooks)[1];
           webhook.send({
             content: vxMsg,
-            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
-            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
             files: msgAttachments,
             allowedMentions: allowedMentionsObject,
           });
@@ -200,8 +200,8 @@ client.on("messageCreate", async (msg) => {
             .then((webhook) => {
               webhook.send({
                 content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
@@ -214,8 +214,8 @@ client.on("messageCreate", async (msg) => {
             .then((webhook) => {
               webhook.send({
                 content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL(),
+                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
@@ -385,7 +385,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
       messageControlFile = JSON.parse(pako.inflate(fs.readFileSync("message-control-list.txt"), { to: "string" }));
     } catch (err) {
-      console.log("Error in message control list read delete orignal", err.code);
+      console.log("Error in message control list read delete original", err.code);
     }
     if (messageControlFile.hasOwnProperty(interactionGuildID)) {
       messageControlFile[interactionGuildID].deleteOriginal = !messageControlFile[interactionGuildID].deleteOriginal;
@@ -394,7 +394,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     fs.writeFile("message-control-list.txt", pako.deflate(JSON.stringify(messageControlFile)), { encoding: "utf8" }, async (err) => {
       if (err) {
-        console.log("error in file writing in message control list delete orignal    ", err.code);
+        console.log("error in file writing in message control list delete original    ", err.code);
       } else {
         await interaction.reply({ content: `Toggled delete original message ${messageControlFile[interactionGuildID].deleteOriginal ? "on" : "off"}.` });
         return;
