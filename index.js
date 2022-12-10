@@ -49,8 +49,8 @@ let messageControlList = {};
 client.on("messageCreate", async (msg) => {
   try {
     // console.log(msg.content);
-    if (messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId &&msg.type!==20&& (await msg.fetchWebhook()).owner.id === client.user.id) return;
-    else if (!messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId) return;
+    if (messageControlList.hasOwnProperty(msg.guildId)&&messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId && msg.type !== 20 && (await msg.fetchWebhook()).owner.id === client.user.id) return;
+    else if ((!messageControlList.hasOwnProperty(msg.guildId)||!messageControlList[msg.guildId].hasOwnProperty("otherWebhooks")) && msg.webhookId) return;
     tempMessage = msg;
     if (msg.content === "ping") {
       msg.reply("pong");
