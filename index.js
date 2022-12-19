@@ -43,7 +43,7 @@ const quoteTweetCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) =>
     subcommand
       .setName("linkconversion")
-      .setDescription("Convert links for retweets including the following data. Ignored by default.")
+      .setDescription("Convert links for retweets including the following data. Follow tweet options is on by default.")
       .addStringOption((option) => option.setName("type").setDescription("The types of tweets to be converted").setRequired(true).addChoices({ name: "text", value: "text" }, { name: "photos", value: "photos" }, { name: "videos", value: "videos" }, { name: "polls", value: "polls" }, { name: "all", value: "all" }, { name: "follow tweets", value: "follow" }, { name: "ignore", value: "ignore" }))
   )
   .addSubcommand((subcommand) => subcommand.setName("removequotedtweet").setDescription("Toggle the removal of quote tweet in the message if present. Off by default."))
@@ -333,7 +333,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         quoteTFile[interactionGuildID].deleteQuotedLink = !quoteTFile[interactionGuildID].deleteQuotedLink;
       }
     } else {
-      quoteTFile[interactionGuildID] = { linkConversion: { follow: false, ignore: true, text: true, photos: true, videos: true, polls: true }, deleteQuotedLink: false };
+      quoteTFile[interactionGuildID] = { linkConversion: { follow: true, ignore: false, text: true, photos: true, videos: true, polls: true }, deleteQuotedLink: false };
     }
     fs.writeFile("quote-tweet-list.txt", pako.deflate(JSON.stringify(quoteTFile)), { encoding: "utf8" }, async (err) => {
       if (err) {
@@ -926,7 +926,7 @@ function InitQuoteTweetList() {
   }
   client.guilds.cache.forEach((guild) => {
     if (!quoteTFile.hasOwnProperty(guild.id)) {
-      quoteTFile[guild.id] = { linkConversion: { follow: false, ignore: true, text: true, photos: true, videos: true, polls: true }, deleteQuotedLink: false };
+      quoteTFile[guild.id] = { linkConversion: { follow: true, ignore: false, text: true, photos: true, videos: true, polls: true }, deleteQuotedLink: false };
     }
   });
   fs.writeFile("quote-tweet-list.txt", pako.deflate(JSON.stringify(quoteTFile)), { encoding: "utf8" }, async (err) => {
