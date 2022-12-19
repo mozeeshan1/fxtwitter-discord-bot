@@ -28,7 +28,7 @@ const mentionRemoveCommand = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 const fxToggleCommand = new SlashCommandBuilder()
   .setName("toggle")
-  .setDescription("Convert links for tweets including. On by default.")
+  .setDescription("Convert links for tweets including the following data. On by default.")
   .addStringOption((option) => option.setName("type").setDescription("The types of tweets to be converted").setRequired(true).addChoices({ name: "text", value: "text" }, { name: "photos", value: "photos" }, { name: "videos", value: "videos" }, { name: "polls", value: "polls" }, { name: "all", value: "all" }))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 const messageControlCommand = new SlashCommandBuilder()
@@ -37,7 +37,18 @@ const messageControlCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) => subcommand.setName("deleteoriginal").setDescription("Toggle the deletion of the original message. On by default."))
   .addSubcommand((subcommand) => subcommand.setName("otherwebhooks").setDescription("Toggle operation on webhooks from other bots. Off by default."))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand];
+const quoteTweetCommand = new SlashCommandBuilder()
+  .setName("quotetweet")
+  .setDescription("Change quote tweet options.")
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("linkconversion")
+      .setDescription("Convert links for retweets including the following data. Ignored by default.")
+      .addStringOption((option) => option.setName("type").setDescription("The types of tweets to be converted").setRequired(true).addChoices({ name: "text", value: "text" }, { name: "photos", value: "photos" }, { name: "videos", value: "videos" }, { name: "polls", value: "polls" }, { name: "all", value: "all" }, { name: "follow tweets", value: "follow" }, { name: "ignore", value: "ignore" }))
+  )
+  .addSubcommand((subcommand) => subcommand.setName("removequotedtweet").setDescription("Toggle the removal of quote tweet in the message if present. Off by default."))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand];
 
 // make message collector for interaction reply
 let tempMessage = null;
@@ -45,12 +56,15 @@ let removeMentionPresent = {};
 let userList = {};
 let roleList = {};
 let messageControlList = {};
+let globalToggleFile = {};
+let globalQuoteTweetFile = {};
 
 client.on("messageCreate", async (msg) => {
   try {
-    // console.log(msg.content);
-    if (messageControlList.hasOwnProperty(msg.guildId)&&messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId && msg.type !== 20 && (await msg.fetchWebhook()).owner.id === client.user.id) return;
-    else if ((!messageControlList.hasOwnProperty(msg.guildId)||!messageControlList[msg.guildId].hasOwnProperty("otherWebhooks")) && msg.webhookId) return;
+    // console.log(client.user.id);
+    // console.log(guildWebhooks.entries());
+    if (messageControlList.hasOwnProperty(msg.guildId) && messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId && msg.type !== 20 && (await msg.fetchWebhook()).owner.id === client.user.id) return;
+    else if ((!messageControlList.hasOwnProperty(msg.guildId) || !messageControlList[msg.guildId].hasOwnProperty("otherWebhooks")) && msg.webhookId) return;
     tempMessage = msg;
     if (msg.content === "ping") {
       msg.reply("pong");
@@ -60,45 +74,94 @@ client.on("messageCreate", async (msg) => {
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
 
-      let toggleFile = {};
-      try {
-        toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
-      } catch (err) {
-        console.log("Error in text read file sync msg toggle", err.code);
+      let toggleObj = globalToggleFile[msg.guildId];
+      let quoteTObj = globalQuoteTweetFile[msg.guildId];
+      let qTLinkConversion = quoteTObj.linkConversion;
+      if (qTLinkConversion.follow) {
+        qTLinkConversion.text = toggleObj.text;
+        qTLinkConversion.photos = toggleObj.photos;
+        qTLinkConversion.videos = toggleObj.videos;
+        qTLinkConversion.polls = toggleObj.polls;
       }
-      let toggleObj = toggleFile[msg.guildId];
-      if (Object.values(toggleObj).every((val) => val === false)) {
+      if (Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
         return;
-      } else if (Object.values(toggleObj).some((val) => val === false)) {
+      } else if (Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
+        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+      } else {
         let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
         let replaceTwitterLinks = [];
+        let tweetsData = {};
         for (let i of twitterLinks) {
-          let j = i.substr(i.indexOf("status/") + 7);
+          let j = i.substring(i.indexOf("status/") + 7);
           let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
           await fetch(fxAPIUrl)
             .then((response) => {
               return response.json();
             })
             .then((data) => {
-              if (data.tweet.hasOwnProperty("media")) {
-                if (data.tweet.media.hasOwnProperty("photos") && toggleObj.photos) {
-                  replaceTwitterLinks.push(i);
-                } else if (data.tweet.media.hasOwnProperty("videos") && toggleObj.videos) {
-                  replaceTwitterLinks.push(i);
-                }
-              } else if (data.tweet.hasOwnProperty("poll") && toggleObj.polls) {
-                replaceTwitterLinks.push(i);
-              } else if (!(data.tweet.hasOwnProperty("media") || data.tweet.hasOwnProperty("poll")) && toggleObj.text) {
-                replaceTwitterLinks.push(i);
+              if (!tweetsData.hasOwnProperty(i)) {
+                tweetsData[i] = data.tweet;
               }
             });
         }
+        let quotedTweets = Object.keys(tweetsData).filter((key) => tweetsData[key].hasOwnProperty("quote"));
+        if (quoteTObj.deleteQuotedLink) {
+          let tweetsToDelete = [];
+          quotedTweets.forEach((qLink) => {
+            tweetsToDelete.push(...Object.keys(tweetsData).filter((tLink) => tweetsData[qLink].quote.id === tweetsData[tLink].id));
+          });
+          tweetsToDelete.forEach((dLink) => {
+            vxMsg = vxMsg.replaceAll(dLink, "");
+          });
+        }
+
+        if (Object.values(toggleObj).some((val) => val === false)) {
+          Object.keys(tweetsData).forEach((tLink) => {
+            if (tweetsData[tLink].hasOwnProperty("media")) {
+              if (tweetsData[tLink].media.hasOwnProperty("photos") && toggleObj.photos) {
+                replaceTwitterLinks.push(tLink);
+              } else if (tweetsData[tLink].media.hasOwnProperty("videos") && toggleObj.videos) {
+                replaceTwitterLinks.push(tLink);
+              }
+            } else if (tweetsData[tLink].hasOwnProperty("poll") && toggleObj.polls) {
+              replaceTwitterLinks.push(tLink);
+            } else if (!(tweetsData[tLink].hasOwnProperty("media") || tweetsData[tLink].hasOwnProperty("poll")) && toggleObj.text) {
+              replaceTwitterLinks.push(tLink);
+            }
+          });
+        } else {
+          Object.keys(tweetsData).forEach((tLink) => {
+            replaceTwitterLinks.push(tLink);
+          });
+        }
+        if (!qTLinkConversion.ignore) {
+          quotedTweets.forEach((qLink) => {
+            if (tweetsData[qLink].quote.hasOwnProperty("media")) {
+              if (tweetsData[qLink].quote.media.hasOwnProperty("photos") && qTLinkConversion.photos) {
+                replaceTwitterLinks.push(qLink);
+              } else if (tweetsData[qLink].quote.media.hasOwnProperty("videos") && qTLinkConversion.videos) {
+                replaceTwitterLinks.push(qLink);
+              } else if (tweetsData[qLink].quote.media.hasOwnProperty("photos") && !qTLinkConversion.photos && replaceTwitterLinks.includes(qLink)) {
+                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
+              } else if (tweetsData[qLink].quote.media.hasOwnProperty("videos") && !qTLinkConversion.videos && replaceTwitterLinks.includes(qLink)) {
+                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
+              }
+            } else if (tweetsData[qLink].quote.hasOwnProperty("poll") && qTLinkConversion.polls) {
+              replaceTwitterLinks.push(qLink);
+            } else if (!(tweetsData[qLink].quote.hasOwnProperty("media") || tweetsData[qLink].quote.hasOwnProperty("poll")) && qTLinkConversion.text) {
+              replaceTwitterLinks.push(qLink);
+            } else if (tweetsData[qLink].quote.media.hasOwnProperty("poll") && !qTLinkConversion.polls && replaceTwitterLinks.includes(qLink)) {
+              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
+            } else if (!(tweetsData[qLink].quote.hasOwnProperty("media") || tweetsData[qLink].quote.hasOwnProperty("poll")) && !qTLinkConversion.text && replaceTwitterLinks.includes(qLink)) {
+              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
+            }
+          });
+        }
+
         for (let j of replaceTwitterLinks) {
           let tempFXLink = j.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
           vxMsg = vxMsg.replaceAll(j, tempFXLink);
         }
-      } else {
-        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
       }
       if (!/fxtwitter\.com/gim.test(vxMsg)) {
         return;
@@ -123,51 +186,37 @@ client.on("messageCreate", async (msg) => {
           .channels.fetchWebhooks(msg.channel.parentId)
           .then((webhooks) => {
             let webhookNumber = 0;
+            let botWebhook = null;
             webhooks.forEach((webhook) => {
-              if (webhook.name === "VxT 1" || webhook.name === "VxT 2") {
+              if (webhook.name === "VxT") {
+                botWebhook = webhook;
                 webhookNumber++;
               }
             });
 
-            if (webhookNumber === 2) {
-              let webhook = getRandomItem(webhooks)[1];
-              webhook.send({
+            if (webhookNumber === 1) {
+              botWebhook.send({
                 content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL():msg.author.displayAvatarURL(),
+                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
                 threadId: msg.channelId,
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
-              if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
-            } else if (webhookNumber === 1) {
-              msg.guild.channels
-                .createWebhook({ channel: msg.channel.parentId, name: "VxT 2" })
-                .then((webhook) => {
-                  webhook.send({
-                    content: vxMsg,
-                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
-                    threadId: msg.channelId,
-                    files: msgAttachments,
-                    allowedMentions: allowedMentionsObject,
-                  });
-                  if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
-                })
-                .catch(console.error);
+              if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
             } else if (webhookNumber === 0) {
               msg.guild.channels
-                .createWebhook({ channel: msg.channel.parentId, name: "VxT 1" })
+                .createWebhook({ channel: msg.channel.parentId, name: "VxT" })
                 .then((webhook) => {
                   webhook.send({
                     content: vxMsg,
-                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
+                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
                     threadId: msg.channelId,
                     files: msgAttachments,
                     allowedMentions: allowedMentionsObject,
                   });
-                  if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
+                  if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
                 })
                 .catch(console.error);
             } else {
@@ -177,49 +226,36 @@ client.on("messageCreate", async (msg) => {
         return;
       }
       msg.channel.fetchWebhooks().then((webhooks) => {
+        let botWebhook = null;
         let webhookNumber = 0;
         webhooks.forEach((webhook) => {
-          if (webhook.name === "VxT 1" || webhook.name === "VxT 2") {
+          if (webhook.name === "VxT") {
+            botWebhook = webhook;
             webhookNumber++;
           }
         });
 
-        if (webhookNumber === 2) {
-          let webhook = getRandomItem(webhooks)[1];
-          webhook.send({
+        if (webhookNumber === 1) {
+          botWebhook.send({
             content: vxMsg,
-            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
+            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
             files: msgAttachments,
             allowedMentions: allowedMentionsObject,
           });
-          if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
-        } else if (webhookNumber === 1) {
-          msg.channel
-            .createWebhook({ name: "VxT 2" })
-            .then((webhook) => {
-              webhook.send({
-                content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
-                files: msgAttachments,
-                allowedMentions: allowedMentionsObject,
-              });
-              if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
-            })
-            .catch(console.error);
+          if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
         } else if (webhookNumber === 0) {
           msg.channel
-            .createWebhook({ name: "VxT 1" })
+            .createWebhook({ name: "VxT" })
             .then((webhook) => {
               webhook.send({
                 content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)&&client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id)?client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL():msg.author.displayAvatarURL(),
+                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
                 files: msgAttachments,
                 allowedMentions: allowedMentionsObject,
               });
-              if(messageControlList[msg.guildId].deleteOriginal) msg.delete();
+              if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
             })
             .catch(console.error);
         } else {
@@ -228,8 +264,7 @@ client.on("messageCreate", async (msg) => {
       });
     }
   } catch (e) {
-    console.log("ERROR OCCURRED");
-    console.log(e);
+    console.log("ERROR OCCURRED ",e);
   }
 });
 
@@ -240,8 +275,107 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await interaction.reply({ content: "Pong!" });
     return;
   }
+  if (interaction.commandName === "quotetweet") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateGlobalQuoteTweetFile();
+    });
+    let quoteTFile = {};
+    let type = interaction.options.getString("type");
+    let interactionGuildID = interaction.guildId;
+    try {
+      quoteTFile = JSON.parse(pako.inflate(fs.readFileSync("quote-tweet-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync quotetweet interaction", err.code);
+    }
+    if (quoteTFile.hasOwnProperty(interactionGuildID)) {
+      if (interaction.options.getSubcommand() === "linkconversion") {
+        let quoteTObj = quoteTFile[interactionGuildID].linkConversion;
+        let toggleObj = globalToggleFile[interactionGuildID];
+        if (type === "follow") {
+          quoteTObj.text = toggleObj.text;
+          quoteTObj.photos = toggleObj.photos;
+          quoteTObj.videos = toggleObj.videos;
+          quoteTObj.polls = toggleObj.polls;
+          quoteTObj.follow = !quoteTObj.follow;
+          quoteTObj.ignore = false;
+        } else if (type === "ignore") {
+          quoteTObj.ignore = !quoteTObj.ignore;
+        } else {
+          if (type === "all") {
+            if (Object.values(quoteTObj).some((val) => val === true)) {
+              Object.keys(quoteTObj).forEach((key) => {
+                quoteTObj[key] = false;
+              });
+            } else {
+              Object.keys(quoteTObj).forEach((key) => {
+                quoteTObj[key] = true;
+              });
+            }
+          } else if (type === "text") {
+            quoteTObj.text = !quoteTObj.text;
+          } else if (type === "photos") {
+            quoteTObj.photos = !quoteTObj.photos;
+          } else if (type === "videos") {
+            quoteTObj.videos = !quoteTObj.videos;
+          } else if (type === "polls") {
+            quoteTObj.polls = !quoteTObj.polls;
+          }
+          quoteTObj.ignore = false;
+          quoteTObj.follow = false;
+        }
+        quoteTFile[interactionGuildID].linkConversion = quoteTObj;
+      } else if (interaction.options.getSubcommand() === "removequotedtweet") {
+        quoteTFile[interactionGuildID].deleteQuotedLink = !quoteTFile[interactionGuildID].deleteQuotedLink;
+      }
+    } else {
+      quoteTFile[interactionGuildID] = { linkConversion: { follow: false, ignore: true, text: true, photos: true, videos: true, polls: true }, deleteQuotedLink: false };
+    }
+    fs.writeFile("quote-tweet-list.txt", pako.deflate(JSON.stringify(quoteTFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in all quotetweet interaction   ", err.code);
+      } else {
+        let tempContent = `Toggled delete quoted tweet in message ${quoteTFile[interactionGuildID].deleteQuotedLink ? `on` : `off`}`;
+        if (interaction.options.getSubcommand() === "linkconversion") {
+          let quoteTObj = quoteTFile[interactionGuildID].linkConversion;
+          switch (type) {
+            case "follow":
+              tempContent = `Toggled follow tweet settings ${quoteTObj.follow ? `on` : `off`}`;
+              break;
+            case "ignore":
+              tempContent = `Toggled ignoring quotetweet conversions ${quoteTObj.ignore ? `on` : `off`}`;
+              break;
+            case "all":
+              tempContent = `Toggled all conversions ${Object.values(quoteTObj).some((val) => val === true) ? `on` : `off`}`;
+              break;
+            case "text":
+              tempContent = `Toggled all text conversions ${quoteTObj.text ? `on` : `off`}`;
+              break;
+            case "photos":
+              tempContent = `Toggled all photos conversions ${quoteTObj.photos ? `on` : `off`}`;
+              break;
+            case "videos":
+              tempContent = `Toggled all videos conversions ${quoteTObj.videos ? `on` : `off`}`;
+              break;
+            case "polls":
+              tempContent = `Toggled all polls conversions ${quoteTObj.polls ? `on` : `off`}`;
+              break;
+            default:
+          }
+        }
 
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
+  }
   if (interaction.commandName === "toggle") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateGlobalToggleFile();
+    });
     let type = interaction.options.getString("type");
     let interactionGuildID = interaction.guildId;
     if (type === "all") {
@@ -374,11 +508,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
   }
-  const filter1 = (tempMessage) => tempMessage.author.id === interaction.user.id;
-  const collector1 = interaction.channel.createMessageCollector(filter1, { max: 1, time: 15000 });
-  collector1.once("collect", async (message) => {
-    messageControlList[message.guildId] = CheckMessageControls(message.guildId);
-  });
+  if (interaction.commandName === "message") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      messageControlList[message.guildId] = CheckMessageControls(message.guildId);
+    });
+  }
   if (interaction.commandName === "message" && interaction.options.getSubcommand() === "deleteoriginal") {
     let messageControlFile = {};
     let interactionGuildID = interaction.guildId;
@@ -423,12 +559,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     });
   }
-
-  const filter2 = (tempMessage) => tempMessage.author.id === interaction.user.id;
-  const collector2 = interaction.channel.createMessageCollector(filter2, { max: 1, time: 15000 });
-  collector2.once("collect", async (message) => {
-    removeMentionPresent[message.guildId] = CheckRemoveMentions(message.guildId);
-  });
+  if (interaction.commandName === "mention") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      removeMentionPresent[message.guildId] = CheckRemoveMentions(message.guildId);
+    });
+  }
 
   if (interaction.commandName === "mention" && interaction.options.getSubcommand() === "remove") {
     let action = interaction.options.getString("action");
@@ -754,16 +891,45 @@ client.on("ready", () => {
   client.user.setActivity(+client.guilds.cache.size > 1 ? `Currently in ${client.guilds.cache.size} servers` : `Currently in ${client.guilds.cache.size} server`);
   InitToggleList();
   InitMessageControlList();
+  InitQuoteTweetList();
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
       messageControlList[guild.id] = CheckMessageControls(guild.id);
+
+      guild.fetchWebhooks().then((gWebhooks) => {
+        gWebhooks.forEach((gWebhook, wID) => {
+          if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
+            gWebhook.delete();
+          }
+        });
+      });
     });
-  }, 100);
+    UpdateGlobalToggleFile();
+    UpdateGlobalQuoteTweetFile();
+  }, 500);
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
 
+function InitQuoteTweetList() {
+  let quoteTFile = {};
+  try {
+    quoteTFile = JSON.parse(pako.inflate(fs.readFileSync("quote-tweet-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in quotetweet list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!quoteTFile.hasOwnProperty(guild.id)) {
+      quoteTFile[guild.id] = { linkConversion: { follow: false, ignore: true, text: true, photos: true, videos: true, polls: true }, deleteQuotedLink: false };
+    }
+  });
+  fs.writeFile("quote-tweet-list.txt", pako.deflate(JSON.stringify(quoteTFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init quotetweet list write", err.code);
+    }
+  });
+}
 function InitMessageControlList() {
   let messageControlFile = {};
   try {
@@ -887,13 +1053,31 @@ function CheckRemoveMentions(GID) {
     return false;
   }
 }
+function UpdateGlobalToggleFile() {
+  let toggleFile = {};
+  try {
+    toggleFile = JSON.parse(pako.inflate(fs.readFileSync("toggle-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg toggle update function", err.code);
+  }
+  globalToggleFile = toggleFile;
+}
+function UpdateGlobalQuoteTweetFile() {
+  let quoteTFile = {};
+  try {
+    quoteTFile = JSON.parse(pako.inflate(fs.readFileSync("quote-tweet-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg quote tweet update function", err.code);
+  }
+  globalQuoteTweetFile = quoteTFile;
+}
 
-function getRandomItem(set) {
+function getBotWebhook(set) {
   let items = Array.from(set);
   let filtereditems = items.filter((elem) => {
-    return elem[1].name === "VxT 1" || elem[1].name === "VxT 2";
+    return elem[1].name === "VxT";
   });
-  return filtereditems[Math.floor(Math.random() * filtereditems.length)];
+  return filtereditems[0];
 }
 //registering slash commands here
 (async () => {
