@@ -66,10 +66,13 @@ client.on("messageCreate", async (msg) => {
     if (messageControlList.hasOwnProperty(msg.guildId) && messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId && msg.type !== 20 && (await msg.fetchWebhook()).owner.id === client.user.id) return;
     else if ((!messageControlList.hasOwnProperty(msg.guildId) || !messageControlList[msg.guildId].hasOwnProperty("otherWebhooks")) && msg.webhookId) return;
     tempMessage = msg;
-    if (msg.content === "ping") {
-      msg.reply("pong");
-    }
+    // if (msg.content === "ping") {
+    //   msg.reply("pong");
+    // }
     if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gi)) {
+      if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
+        return;
+      }
       let vxMsg = msg.content;
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
@@ -264,7 +267,7 @@ client.on("messageCreate", async (msg) => {
       });
     }
   } catch (e) {
-    console.log("ERROR OCCURRED ",e);
+    console.log("ERROR OCCURRED ", e);
   }
 });
 
@@ -896,15 +899,17 @@ client.on("ready", () => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
       messageControlList[guild.id] = CheckMessageControls(guild.id);
-
-      guild.fetchWebhooks().then((gWebhooks) => {
-        gWebhooks.forEach((gWebhook, wID) => {
-          if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
-            gWebhook.delete();
-          }
+      if (guild.members.me.permissions.any("ManageWebhooks")) {
+        guild.fetchWebhooks().then((gWebhooks) => {
+          gWebhooks.forEach((gWebhook, wID) => {
+            if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
+              gWebhook.delete();
+            }
+          });
         });
-      });
+      }
     });
+
     UpdateGlobalToggleFile();
     UpdateGlobalQuoteTweetFile();
   }, 500);
