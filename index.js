@@ -80,20 +80,17 @@ client.on("messageCreate", async (msg) => {
       let toggleObj = globalToggleFile[msg.guildId];
       let quoteTObj = globalQuoteTweetFile[msg.guildId];
       let qTLinkConversion = quoteTObj.linkConversion;
+
+      let tweetsData = {};
       if (qTLinkConversion.follow) {
         qTLinkConversion.text = toggleObj.text;
         qTLinkConversion.photos = toggleObj.photos;
         qTLinkConversion.videos = toggleObj.videos;
         qTLinkConversion.polls = toggleObj.polls;
       }
-      if (Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
-        return;
-      } else if (Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
-        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
-      } else {
+      if (quoteTObj.deleteQuotedLink) {
         let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
-        let replaceTwitterLinks = [];
-        let tweetsData = {};
+
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("status/") + 7);
           let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
@@ -108,15 +105,38 @@ client.on("messageCreate", async (msg) => {
             });
         }
         let quotedTweets = Object.keys(tweetsData).filter((key) => tweetsData[key].hasOwnProperty("quote"));
-        if (quoteTObj.deleteQuotedLink) {
-          let tweetsToDelete = [];
-          quotedTweets.forEach((qLink) => {
-            tweetsToDelete.push(...Object.keys(tweetsData).filter((tLink) => tweetsData[qLink].quote.id === tweetsData[tLink].id));
-          });
-          tweetsToDelete.forEach((dLink) => {
-            vxMsg = vxMsg.replaceAll(dLink, "");
-          });
+
+        let tweetsToDelete = [];
+        quotedTweets.forEach((qLink) => {
+          tweetsToDelete.push(...Object.keys(tweetsData).filter((tLink) => tweetsData[qLink].quote.id === tweetsData[tLink].id));
+        });
+        tweetsToDelete.forEach((dLink) => {
+          vxMsg = vxMsg.replaceAll(dLink, "");
+        });
+      }
+      if (Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
+        return;
+      } else if (Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
+        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+      } else {
+        let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+        let replaceTwitterLinks = [];
+        if (Object.keys(tweetsData).length === 0) {
+          for (let i of twitterLinks) {
+            let j = i.substring(i.indexOf("status/") + 7);
+            let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+            await fetch(fxAPIUrl)
+              .then((response) => {
+                return response.json();
+              })
+              .then((data) => {
+                if (!tweetsData.hasOwnProperty(i)) {
+                  tweetsData[i] = data.tweet;
+                }
+              });
+          }
         }
+        let quotedTweets = Object.keys(tweetsData).filter((key) => tweetsData[key].hasOwnProperty("quote"));
 
         if (Object.values(toggleObj).some((val) => val === false)) {
           Object.keys(tweetsData).forEach((tLink) => {
@@ -166,6 +186,7 @@ client.on("messageCreate", async (msg) => {
           vxMsg = vxMsg.replaceAll(j, tempFXLink);
         }
       }
+
       if (!/fxtwitter\.com/gim.test(vxMsg)) {
         return;
       }
