@@ -48,7 +48,12 @@ const quoteTweetCommand = new SlashCommandBuilder()
   )
   .addSubcommand((subcommand) => subcommand.setName("removequotedtweet").setDescription("Toggle the removal of quote tweet in the message if present. Off by default."))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand];
+const retweetCommand = new SlashCommandBuilder()
+  .setName("retweet")
+  .setDescription("Change retweet options.")
+  .addSubcommand((subcommand) => subcommand.setName("removeoriginaltweet").setDescription("Toggle the removal of original tweet in the message if present. Off by default."))
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand];
 
 // make message collector for interaction reply
 let tempMessage = null;
@@ -58,6 +63,7 @@ let roleList = {};
 let messageControlList = {};
 let globalToggleFile = {};
 let globalQuoteTweetFile = {};
+let globalRetweetFile = {};
 
 client.on("messageCreate", async (msg) => {
   try {
@@ -80,6 +86,7 @@ client.on("messageCreate", async (msg) => {
       let toggleObj = globalToggleFile[msg.guildId];
       let quoteTObj = globalQuoteTweetFile[msg.guildId];
       let qTLinkConversion = quoteTObj.linkConversion;
+      let retweetObj = globalRetweetFile[msg.guildId];
 
       let tweetsData = {};
       if (qTLinkConversion.follow) {
@@ -87,6 +94,44 @@ client.on("messageCreate", async (msg) => {
         qTLinkConversion.photos = toggleObj.photos;
         qTLinkConversion.videos = toggleObj.videos;
         qTLinkConversion.polls = toggleObj.polls;
+      }
+      if (retweetObj.deleteOriginalLink) {
+        let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+
+        for (let i of twitterLinks) {
+          let j = i.substring(i.indexOf("status/") + 7);
+          let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+          await fetch(fxAPIUrl)
+            .then((response) => {
+              return response.json();
+            })
+            .then((data) => {
+              if (!tweetsData.hasOwnProperty(i)) {
+                tweetsData[i] = data.tweet;
+              }
+            });
+        }
+        let retweetedTweets = Object.keys(tweetsData).filter((key) => /^RT @/gim.test(tweetsData[key].text));
+
+        let tweetsToDelete = [];
+        retweetedTweets.forEach((rLink) => {
+          tweetsToDelete.push(
+            ...Object.keys(tweetsData).filter((tLink) => {
+              let tempStringStart = `^RT @${tweetsData[tLink].author.screen_name}: `;
+              let authorRegex = new RegExp(tempStringStart);
+              let authorTest = authorRegex.test(tweetsData[rLink].text);
+              let retweetText = tweetsData[rLink].text.substring(tempStringStart.length-1, tweetsData[rLink].text.length - 1);
+              retweetText = retweetText.replaceAll("\\", "\\\\").replaceAll("(","\\(").replaceAll(")","\\)");
+              let textRegex = new RegExp(`^(${retweetText})`);
+              let textTest = textRegex.test(tweetsData[tLink].text);
+              let retweetCountTest = tweetsData[rLink].retweets === tweetsData[tLink].retweets;
+              return authorTest && textTest && retweetCountTest;
+            })
+          );
+        });
+        tweetsToDelete.forEach((dLink) => {
+          vxMsg = vxMsg.replaceAll(dLink, "");
+        });
       }
       if (quoteTObj.deleteQuotedLink) {
         let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
@@ -298,6 +343,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.commandName === "ping") {
     await interaction.reply({ content: "Pong!" });
     return;
+  }
+  if (interaction.commandName === "retweet") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateGlobalRetweetFile();
+    });
+    let retweetFile = {};
+    let interactionGuildID = interaction.guildId;
+    try {
+      retweetFile = JSON.parse(pako.inflate(fs.readFileSync("retweet-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync retweet interaction", err.code);
+    }
+    if (retweetFile.hasOwnProperty(interactionGuildID)) {
+      if (interaction.options.getSubcommand() === "removeoriginaltweet") {
+        retweetFile[interactionGuildID].deleteOriginalLink = !retweetFile[interactionGuildID].deleteOriginalLink;
+      }
+    } else {
+      retweetFile[interactionGuildID] = { deleteOriginalLink: false };
+    }
+    fs.writeFile("retweet-list.txt", pako.deflate(JSON.stringify(retweetFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in all retweet interaction   ", err.code);
+      } else {
+        let tempContent = `Toggled delete original tweet in message ${retweetFile[interactionGuildID].deleteOriginalLink ? `on` : `off`}`;
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
   }
   if (interaction.commandName === "quotetweet") {
     const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
@@ -916,6 +991,7 @@ client.on("ready", () => {
   InitToggleList();
   InitMessageControlList();
   InitQuoteTweetList();
+  InitRetweetList();
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
@@ -933,11 +1009,30 @@ client.on("ready", () => {
 
     UpdateGlobalToggleFile();
     UpdateGlobalQuoteTweetFile();
+    UpdateGlobalRetweetFile();
   }, 500);
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
 
+function InitRetweetList() {
+  let retweetFile = {};
+  try {
+    retweetFile = JSON.parse(pako.inflate(fs.readFileSync("retweet-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in retweet list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!retweetFile.hasOwnProperty(guild.id)) {
+      retweetFile[guild.id] = { deleteOriginalLink: false };
+    }
+  });
+  fs.writeFile("retweet-list.txt", pako.deflate(JSON.stringify(retweetFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init retweet list write", err.code);
+    }
+  });
+}
 function InitQuoteTweetList() {
   let quoteTFile = {};
   try {
@@ -1096,6 +1191,15 @@ function UpdateGlobalQuoteTweetFile() {
     console.log("Error in text read file sync msg quote tweet update function", err.code);
   }
   globalQuoteTweetFile = quoteTFile;
+}
+function UpdateGlobalRetweetFile() {
+  let retweetFile = {};
+  try {
+    retweetFile = JSON.parse(pako.inflate(fs.readFileSync("retweet-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg retweet update function", err.code);
+  }
+  globalRetweetFile = retweetFile;
 }
 
 function getBotWebhook(set) {
