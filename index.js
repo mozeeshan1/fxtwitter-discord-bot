@@ -7,7 +7,7 @@ const { log } = require("console");
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences],
 });
-const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
+const rest = new REST({ version: "10" }).setToken(Config["TEST"]);
 const pingCommand = new SlashCommandBuilder().setName("ping").setDescription("Replies with pong");
 const mentionRemoveCommand = new SlashCommandBuilder()
   .setName("mention")
@@ -53,7 +53,18 @@ const retweetCommand = new SlashCommandBuilder()
   .setDescription("Change retweet options.")
   .addSubcommand((subcommand) => subcommand.setName("removeoriginaltweet").setDescription("Toggle the removal of original tweet in the message if present. Off by default."))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand];
+const directMediaCommand = new SlashCommandBuilder()
+  .setName("directmedia")
+  .setDescription("Change direct media link options.")
+  .addSubcommand((subcommand) => subcommand.setName("toggle").setDescription("Toggle the addition of d. subdomain to converted twitter links. Off by default."))
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("multiplephotos")
+      .setDescription("Change the options for tweets with multiple photos. Conversion on by default.")
+      .addStringOption((option) => option.setName("option").setDescription("Select an option.").setRequired(true).addChoices({ name: "convert", value: "convert" }, { name: "replacewithmosaic", value: "replacewithmosaic" }))
+  )
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand];
 
 // make message collector for interaction reply
 let tempMessage = null;
@@ -64,6 +75,7 @@ let messageControlList = {};
 let globalToggleFile = {};
 let globalQuoteTweetFile = {};
 let globalRetweetFile = {};
+let globalDMediaFile = {};
 
 client.on("messageCreate", async (msg) => {
   try {
@@ -82,13 +94,18 @@ client.on("messageCreate", async (msg) => {
       let vxMsg = msg.content;
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
+      let convertToDomain = "fxtwitter";
 
       let toggleObj = globalToggleFile[msg.guildId];
       let quoteTObj = globalQuoteTweetFile[msg.guildId];
       let qTLinkConversion = quoteTObj.linkConversion;
       let retweetObj = globalRetweetFile[msg.guildId];
+      let dMediaObj = globalDMediaFile[msg.guildId];
 
       let tweetsData = {};
+      if (dMediaObj.toggle) {
+        convertToDomain = "d.fxtwitter";
+      }
       if (qTLinkConversion.follow) {
         qTLinkConversion.text = toggleObj.text;
         qTLinkConversion.photos = toggleObj.photos;
@@ -120,8 +137,8 @@ client.on("messageCreate", async (msg) => {
               let tempStringStart = `^RT @${tweetsData[tLink].author.screen_name}: `;
               let authorRegex = new RegExp(tempStringStart);
               let authorTest = authorRegex.test(tweetsData[rLink].text);
-              let retweetText = tweetsData[rLink].text.substring(tempStringStart.length-1, tweetsData[rLink].text.length - 1);
-              retweetText = retweetText.replaceAll("\\", "\\\\").replaceAll("(","\\(").replaceAll(")","\\)");
+              let retweetText = tweetsData[rLink].text.substring(tempStringStart.length - 1, tweetsData[rLink].text.length - 1);
+              retweetText = retweetText.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
               let textRegex = new RegExp(`^(${retweetText})`);
               let textTest = textRegex.test(tweetsData[tLink].text);
               let retweetCountTest = tweetsData[rLink].retweets === tweetsData[tLink].retweets;
@@ -159,26 +176,26 @@ client.on("messageCreate", async (msg) => {
           vxMsg = vxMsg.replaceAll(dLink, "");
         });
       }
-      if (Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
+      if (!dMediaObj.toggle&&Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
         return;
-      } else if (Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
-        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+      } else if (!dMediaObj.toggle&&Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
+        vxMsg = vxMsg.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, convertToDomain);
       } else {
         let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
         let replaceTwitterLinks = [];
         if (Object.keys(tweetsData).length === 0) {
           for (let i of twitterLinks) {
-            let j = i.substring(i.indexOf("status/") + 7);
-            let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
-            await fetch(fxAPIUrl)
-              .then((response) => {
-                return response.json();
-              })
-              .then((data) => {
-                if (!tweetsData.hasOwnProperty(i)) {
+            if (!tweetsData.hasOwnProperty(i)) {
+              let j = i.substring(i.indexOf("status/") + 7);
+              let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+              await fetch(fxAPIUrl)
+                .then((response) => {
+                  return response.json();
+                })
+                .then((data) => {
                   tweetsData[i] = data.tweet;
-                }
-              });
+                });
+            }
           }
         }
         let quotedTweets = Object.keys(tweetsData).filter((key) => tweetsData[key].hasOwnProperty("quote"));
@@ -226,8 +243,25 @@ client.on("messageCreate", async (msg) => {
           });
         }
 
+        if (dMediaObj.toggle && !dMediaObj.multiplePhotos.convert) {
+          if (dMediaObj.multiplePhotos.replaceWithMosaic) {
+            replaceTwitterLinks.forEach((rLink) => {
+              if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
+                let mosaicLink = tweetsData[rLink].media.mosaic.formats[Object.keys(tweetsData[rLink].media.mosaic.formats)[0]];
+                vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
+                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
+              }
+            });
+          }
+          else{ replaceTwitterLinks.forEach((rLink) => {
+            if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
+              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
+            }
+          });}
+        }
+
         for (let j of replaceTwitterLinks) {
-          let tempFXLink = j.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, "fxtwitter");
+          let tempFXLink = j.replace(/mobile.twitter/g, "twitter").replace(/twitter/g, convertToDomain);
           vxMsg = vxMsg.replaceAll(j, tempFXLink);
         }
       }
@@ -343,6 +377,61 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.commandName === "ping") {
     await interaction.reply({ content: "Pong!" });
     return;
+  }
+  if (interaction.commandName === "directmedia") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateGlobalDMediaFile();
+    });
+    let dMediaFile = {};
+    let option = interaction.options.getString("option");
+    let interactionGuildID = interaction.guildId;
+    try {
+      dMediaFile = JSON.parse(pako.inflate(fs.readFileSync("direct-media-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync direct media interaction", err.code);
+    }
+    if (dMediaFile.hasOwnProperty(interactionGuildID)) {
+      if (interaction.options.getSubcommand() === "toggle") {
+        dMediaFile[interactionGuildID].toggle = !dMediaFile[interactionGuildID].toggle;
+      } else if (interaction.options.getSubcommand() === "multiplephotos") {
+        if (option === "convert") {
+          dMediaFile[interactionGuildID].multiplePhotos.convert = !dMediaFile[interactionGuildID].multiplePhotos.convert;
+          if (dMediaFile[interactionGuildID].multiplePhotos.convert) {
+            dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic = false;
+          }
+        } else if (option === "replacewithmosaic") {
+          dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic = !dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic;
+          if (dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic) {
+            dMediaFile[interactionGuildID].multiplePhotos.convert = false;
+          }
+        }
+      }
+    } else {
+      dMediaFile[interactionGuildID] = { toggle: false, multiplePhotos: { convert: true, replaceWithMosaic: false } };
+    }
+    fs.writeFile("direct-media-list.txt", pako.deflate(JSON.stringify(dMediaFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in all direct media interaction   ", err.code);
+      } else {
+        let tempContent = `Toggled direct media conversion ${dMediaFile[interactionGuildID].toggle ? `on` : `off`}`;
+        if (interaction.options.getSubcommand() === "multiplephotos") {
+          switch (option) {
+            case "convert":
+              tempContent = `Toggled link conversion for tweets containing multiple photos ${dMediaFile[interactionGuildID].multiplePhotos.convert ? `on` : `off`}`;
+              break;
+            case "replacewithmosaic":
+              tempContent = `Toggled mosaic conversion for tweets containing multiple photos ${dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic ? `on` : `off`}`;
+              break;
+            default:
+              break;
+          }
+        }
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
   }
   if (interaction.commandName === "retweet") {
     const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
@@ -992,6 +1081,7 @@ client.on("ready", () => {
   InitMessageControlList();
   InitQuoteTweetList();
   InitRetweetList();
+  InitDirectMediaList();
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
@@ -1010,11 +1100,30 @@ client.on("ready", () => {
     UpdateGlobalToggleFile();
     UpdateGlobalQuoteTweetFile();
     UpdateGlobalRetweetFile();
+    UpdateGlobalDMediaFile();
   }, 500);
 });
 // client.on("debug", ( e ) => console.log(e));
-client.login(Config["TOKEN"]);
+client.login(Config["TEST"]);
 
+function InitDirectMediaList() {
+  let dMediaFile = {};
+  try {
+    dMediaFile = JSON.parse(pako.inflate(fs.readFileSync("direct-media-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in direct media list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!dMediaFile.hasOwnProperty(guild.id)) {
+      dMediaFile[guild.id] = { toggle: false, multiplePhotos: { convert: true, replaceWithMosaic: false } };
+    }
+  });
+  fs.writeFile("direct-media-list.txt", pako.deflate(JSON.stringify(dMediaFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init direct media list write", err.code);
+    }
+  });
+}
 function InitRetweetList() {
   let retweetFile = {};
   try {
@@ -1201,6 +1310,15 @@ function UpdateGlobalRetweetFile() {
   }
   globalRetweetFile = retweetFile;
 }
+function UpdateGlobalDMediaFile() {
+  let dMediaFile = {};
+  try {
+    dMediaFile = JSON.parse(pako.inflate(fs.readFileSync("direct-media-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg direct media update function", err.code);
+  }
+  globalDMediaFile = dMediaFile;
+}
 
 function getBotWebhook(set) {
   let items = Array.from(set);
@@ -1218,3 +1336,4 @@ function getBotWebhook(set) {
     console.error(error);
   }
 })();
+k

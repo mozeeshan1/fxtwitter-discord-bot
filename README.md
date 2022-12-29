@@ -1,11 +1,13 @@
 # FxTwitter discord bot
 
 
-A discord bot that converts twitter links to fxtwitter links. Fxtwitter link provides better embeds than default twitter embeds. No commands required, just add to server and use. It deletes your message and uses webhooks to copy your display name and avatar in a server and sends it with those attached to the webhook (refer to example). You can also remove mentions you don't want the bot to use through slash commands (type "/mention" to see the options).
+A discord bot that converts twitter links to fxtwitter links. Fxtwitter link provides better embeds than default twitter embeds. No commands required, just add to server and use. It deletes your message and uses webhooks to copy your display name and avatar in a server and sends it with those attached to the webhook (refer to example). You can also remove mentions you don't want the bot to use, toggle link conversion for tweets with different media types and toggle conersion to direct media links through slash commands (check the changelog channel in the support server for more information).
 
 Learn more about fxtwitter here : https://github.com/dangeredwolf/FixTweet
 
 Invite link: https://discord.com/api/oauth2/authorize?client_id=1015497909925580830&permissions=412854217728&scope=bot
+
+Invite link to support server: https://discord.gg/6Cza4rW3y9
 
 Example:
 
