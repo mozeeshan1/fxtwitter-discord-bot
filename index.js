@@ -7,7 +7,7 @@ const { log } = require("console");
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences],
 });
-const rest = new REST({ version: "10" }).setToken(Config["TEST"]);
+const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
 const pingCommand = new SlashCommandBuilder().setName("ping").setDescription("Replies with pong");
 const mentionRemoveCommand = new SlashCommandBuilder()
   .setName("mention")
@@ -1104,7 +1104,7 @@ client.on("ready", () => {
   }, 500);
 });
 // client.on("debug", ( e ) => console.log(e));
-client.login(Config["TEST"]);
+client.login(Config["TOKEN"]);
 
 function InitDirectMediaList() {
   let dMediaFile = {};
