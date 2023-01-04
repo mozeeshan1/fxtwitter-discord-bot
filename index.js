@@ -75,7 +75,19 @@ const directMediaCommand = new SlashCommandBuilder()
       .addStringOption((option) => option.setName("option").setDescription("Select an option.").setRequired(true).addChoices({ name: "convert", value: "convert" }, { name: "preferquotetweet", value: "preferquotetweet" }))
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand];
+const translateTweetCommand = new SlashCommandBuilder()
+  .setName("translate")
+  .setDescription("Change tweet translation options.")
+  .addSubcommand((subcommand) => subcommand.setName("toggle").setDescription("Toggle the translation of tweets. Off by default."))
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("language")
+      .setDescription("Change the language the tweets are translated to. English by default.")
+      .addStringOption((option) => option.setName("language").setDescription("The language to convert to.").setRequired(true))
+  )
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const ddInstaCommand = new SlashCommandBuilder().setName("convertinstagram").setDescription("Toggle conversion of Instagram links to ddinstagram.").setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand, translateTweetCommand, ddInstaCommand];
 
 let tempMessage = null;
 let removeMentionPresent = {};
@@ -86,7 +98,379 @@ let globalToggleFile = {};
 let globalQuoteTweetFile = {};
 let globalRetweetFile = {};
 let globalDMediaFile = {};
-
+let globalTranslateFile = {};
+let globalInstaConversionFile = {};
+let nativeISOLanguages = {
+  Afaraf: "aa",
+  аҧсшәа: "ab",
+  Afrikaans: "af",
+  Akan: "ak",
+  አማርኛ: "am",
+  العربية: "ar",
+  aragonés: "an",
+  অসমীয়া: "as",
+  "авар мацӀ": "av",
+  avesta: "ae",
+  "aymar aru": "ay",
+  "azərbaycan dili": "az",
+  башҡорт: "ba",
+  bamanankan: "bm",
+  "беларуская мова": "be",
+  বাংলা: "bn",
+  Bislama: "bi",
+  "བོད་ཡིག": "bo",
+  "bosanski jezik": "bs",
+  brezhoneg: "br",
+  "български език": "bg",
+  català: "ca",
+  čeština: "cs",
+  Chamoru: "ch",
+  "нохчийн мотт": "ce",
+  "ѩзыкъ словѣньскъ": "cu",
+  "чӑваш чӗлхи": "cv",
+  Kernewek: "kw",
+  corsu: "co",
+  ᓀᐦᐃᔭᐍᐏᐣ: "cr",
+  Cymraeg: "cy",
+  dansk: "da",
+  Deutsch: "de",
+  ދިވެހި: "dv",
+  "རྫོང་ཁ": "dz",
+  ελληνικά: "el",
+  English: "en",
+  Esperanto: "eo",
+  eesti: "et",
+  euskara: "eu",
+  Eʋegbe: "ee",
+  føroyskt: "fo",
+  فارسی: "fa",
+  "vosa Vakaviti": "fj",
+  suomi: "fi",
+  français: "fr",
+  Frysk: "fy",
+  Fulfulde: "ff",
+  Gàidhlig: "gd",
+  Gaeilge: "ga",
+  galego: "gl",
+  Gaelg: "gv",
+  "Avañe'ẽ": "gn",
+  ગુજરાતી: "gu",
+  "Kreyòl ayisyen": "ht",
+  هَوُسَ: "ha",
+  undefined: "sh",
+  עברית: "he",
+  Otjiherero: "hz",
+  हिन्दी: "hi",
+  "Hiri Motu": "ho",
+  "hrvatski jezik": "hr",
+  magyar: "hu",
+  Հայերեն: "hy",
+  "Asụsụ Igbo": "ig",
+  Ido: "io",
+  "ꆈꌠ꒿ Nuosuhxop": "ii",
+  ᐃᓄᒃᑎᑐᑦ: "iu",
+  Interlingue: "ie",
+  Interlingua: "ia",
+  "Bahasa Indonesia": "id",
+  Iñupiaq: "ik",
+  Íslenska: "is",
+  italiano: "it",
+  "basa Jawa": "jv",
+  日本語: "ja",
+  kalaallisut: "kl",
+  ಕನ್ನಡ: "kn",
+  कश्मीरी: "ks",
+  ქართული: "ka",
+  Kanuri: "kr",
+  "қазақ тілі": "kk",
+  ខ្មែរ: "km",
+  Gĩkũyũ: "ki",
+  Ikinyarwanda: "rw",
+  Кыргызча: "ky",
+  "коми кыв": "kv",
+  Kikongo: "kg",
+  한국어: "ko",
+  Kuanyama: "kj",
+  Kurdî: "ku",
+  ພາສາລາວ: "lo",
+  latine: "la",
+  "latviešu valoda": "lv",
+  Limburgs: "li",
+  Lingála: "ln",
+  "lietuvių kalba": "lt",
+  Lëtzebuergesch: "lb",
+  Tshiluba: "lu",
+  Luganda: "lg",
+  "Kajin M̧ajeļ": "mh",
+  മലയാളം: "ml",
+  मराठी: "mr",
+  "македонски јазик": "mk",
+  "fiteny malagasy": "mg",
+  Malti: "mt",
+  "Монгол хэл": "mn",
+  "te reo Māori": "mi",
+  "bahasa Melayu": "ms",
+  ဗမာစာ: "my",
+  "Ekakairũ Naoero": "na",
+  "Diné bizaad": "nv",
+  "isi Ndebele": "nd",
+  Owambo: "ng",
+  नेपाली: "ne",
+  Nederlands: "nl",
+  "Norsk nynorsk": "nn",
+  "Norsk bokmål": "nb",
+  Norsk: "no",
+  chiCheŵa: "ny",
+  occitan: "oc",
+  ᐊᓂᔑᓈᐯᒧᐎᓐ: "oj",
+  ଓଡ଼ିଆ: "or",
+  "Afaan Oromoo": "om",
+  "ирон æвзаг": "os",
+  ਪੰਜਾਬੀ: "pa",
+  पाऴि: "pi",
+  "język polski": "pl",
+  português: "pt",
+  پښتو: "ps",
+  "Runa Simi": "qu",
+  "rumantsch grischun": "rm",
+  "limba română": "ro",
+  Ikirundi: "rn",
+  Русский: "ru",
+  "yângâ tî sängö": "sg",
+  संस्कृतम्: "sa",
+  සිංහල: "si",
+  slovenčina: "sk",
+  slovenščina: "sl",
+  Davvisámegiella: "se",
+  "gagana fa'a Samoa": "sm",
+  chiShona: "sn",
+  सिन्धी: "sd",
+  Soomaaliga: "so",
+  Sesotho: "st",
+  español: "es",
+  Shqip: "sq",
+  sardu: "sc",
+  "српски језик": "sr",
+  SiSwati: "ss",
+  "Basa Sunda": "su",
+  Kiswahili: "sw",
+  svenska: "sv",
+  "Reo Tahiti": "ty",
+  தமிழ்: "ta",
+  "татар теле": "tt",
+  తెలుగు: "te",
+  тоҷикӣ: "tg",
+  "Wikang Tagalog": "tl",
+  ไทย: "th",
+  ትግርኛ: "ti",
+  "faka Tonga": "to",
+  Setswana: "tn",
+  Xitsonga: "ts",
+  Türkmen: "tk",
+  Türkçe: "tr",
+  Twi: "tw",
+  ئۇيغۇرچە: "ug",
+  "українська мова": "uk",
+  اردو: "ur",
+  Oʻzbek: "uz",
+  Tshivenḓa: "ve",
+  "Tiếng Việt": "vi",
+  Volapük: "vo",
+  walon: "wa",
+  Wollof: "wo",
+  isiXhosa: "xh",
+  ייִדיש: "yi",
+  Yorùbá: "yo",
+  "Saɯ cueŋƅ": "za",
+  中文: "zh",
+  isiZulu: "zu",
+};
+let englishISOLanguages = {
+  Afar: "aa",
+  Abkhazian: "ab",
+  Afrikaans: "af",
+  Akan: "ak",
+  Amharic: "am",
+  Arabic: "ar",
+  Aragonese: "an",
+  Assamese: "as",
+  Avaric: "av",
+  Avestan: "ae",
+  Aymara: "ay",
+  Azerbaijani: "az",
+  Bashkir: "ba",
+  Bambara: "bm",
+  Belarusian: "be",
+  Bengali: "bn",
+  Bislama: "bi",
+  Tibetan: "bo",
+  Bosnian: "bs",
+  Breton: "br",
+  Bulgarian: "bg",
+  Catalan: "ca",
+  Czech: "cs",
+  Chamorro: "ch",
+  Chechen: "ce",
+  "Church Slavic": "cu",
+  Chuvash: "cv",
+  Cornish: "kw",
+  Corsican: "co",
+  Cree: "cr",
+  Welsh: "cy",
+  Danish: "da",
+  German: "de",
+  Dhivehi: "dv",
+  Dzongkha: "dz",
+  "Modern Greek (1453-)": "el",
+  English: "en",
+  Esperanto: "eo",
+  Estonian: "et",
+  Basque: "eu",
+  Ewe: "ee",
+  Faroese: "fo",
+  Persian: "fa",
+  Fijian: "fj",
+  Finnish: "fi",
+  French: "fr",
+  "Western Frisian": "fy",
+  Fulah: "ff",
+  "Scottish Gaelic": "gd",
+  Irish: "ga",
+  Galician: "gl",
+  Manx: "gv",
+  Guarani: "gn",
+  Gujarati: "gu",
+  Haitian: "ht",
+  Hausa: "ha",
+  "Serbo-Croatian": "sh",
+  Hebrew: "he",
+  Herero: "hz",
+  Hindi: "hi",
+  "Hiri Motu": "ho",
+  Croatian: "hr",
+  Hungarian: "hu",
+  Armenian: "hy",
+  Igbo: "ig",
+  Ido: "io",
+  "Sichuan Yi": "ii",
+  Inuktitut: "iu",
+  Interlingue: "ie",
+  "Interlingua (International Auxiliary Language Association)": "ia",
+  Indonesian: "id",
+  Inupiaq: "ik",
+  Icelandic: "is",
+  Italian: "it",
+  Javanese: "jv",
+  Japanese: "ja",
+  Kalaallisut: "kl",
+  Kannada: "kn",
+  Kashmiri: "ks",
+  Georgian: "ka",
+  Kanuri: "kr",
+  Kazakh: "kk",
+  "Central Khmer": "km",
+  Kikuyu: "ki",
+  Kinyarwanda: "rw",
+  Kirghiz: "ky",
+  Komi: "kv",
+  Kongo: "kg",
+  Korean: "ko",
+  Kuanyama: "kj",
+  Kurdish: "ku",
+  Lao: "lo",
+  Latin: "la",
+  Latvian: "lv",
+  Limburgan: "li",
+  Lingala: "ln",
+  Lithuanian: "lt",
+  Luxembourgish: "lb",
+  "Luba-Katanga": "lu",
+  Ganda: "lg",
+  Marshallese: "mh",
+  Malayalam: "ml",
+  Marathi: "mr",
+  Macedonian: "mk",
+  Malagasy: "mg",
+  Maltese: "mt",
+  Mongolian: "mn",
+  Maori: "mi",
+  "Malay (macrolanguage)": "ms",
+  Burmese: "my",
+  Nauru: "na",
+  Navajo: "nv",
+  "South Ndebele": "nr",
+  "North Ndebele": "nd",
+  Ndonga: "ng",
+  "Nepali (macrolanguage)": "ne",
+  Dutch: "nl",
+  "Norwegian Nynorsk": "nn",
+  "Norwegian Bokmål": "nb",
+  Norwegian: "no",
+  Nyanja: "ny",
+  "Occitan (post 1500)": "oc",
+  Ojibwa: "oj",
+  "Oriya (macrolanguage)": "or",
+  Oromo: "om",
+  Ossetian: "os",
+  Panjabi: "pa",
+  Pali: "pi",
+  Polish: "pl",
+  Portuguese: "pt",
+  Pushto: "ps",
+  Quechua: "qu",
+  Romansh: "rm",
+  Romanian: "ro",
+  Rundi: "rn",
+  Russian: "ru",
+  Sango: "sg",
+  Sanskrit: "sa",
+  Sinhala: "si",
+  Slovak: "sk",
+  Slovenian: "sl",
+  "Northern Sami": "se",
+  Samoan: "sm",
+  Shona: "sn",
+  Sindhi: "sd",
+  Somali: "so",
+  "Southern Sotho": "st",
+  Spanish: "es",
+  Albanian: "sq",
+  Sardinian: "sc",
+  Serbian: "sr",
+  Swati: "ss",
+  Sundanese: "su",
+  "Swahili (macrolanguage)": "sw",
+  Swedish: "sv",
+  Tahitian: "ty",
+  Tamil: "ta",
+  Tatar: "tt",
+  Telugu: "te",
+  Tajik: "tg",
+  Tagalog: "tl",
+  Thai: "th",
+  Tigrinya: "ti",
+  "Tonga (Tonga Islands)": "to",
+  Tswana: "tn",
+  Tsonga: "ts",
+  Turkmen: "tk",
+  Turkish: "tr",
+  Twi: "tw",
+  Uighur: "ug",
+  Ukrainian: "uk",
+  Urdu: "ur",
+  Uzbek: "uz",
+  Venda: "ve",
+  Vietnamese: "vi",
+  Volapük: "vo",
+  Walloon: "wa",
+  Wolof: "wo",
+  Xhosa: "xh",
+  Yiddish: "yi",
+  Yoruba: "yo",
+  Zhuang: "za",
+  Chinese: "zh",
+  Zulu: "zu",
+};
 client.on("messageCreate", async (msg) => {
   try {
     // console.log(client.user.id);
@@ -97,13 +481,17 @@ client.on("messageCreate", async (msg) => {
     // if (msg.content === "ping") {
     //   msg.reply("pong");
     // }
-    if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gi)) {
-      if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
-        return;
+    let vxMsg = msg.content.replaceAll(")", " ".concat(`)`));
+
+    if (globalInstaConversionFile[msg.guildId].toggle&&msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
+      let instagramLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(instagram.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+      for (let iLink of instagramLinks) {
+        tempILink = iLink.replaceAll(/(?=\/\?)\/[^\/]*/igm, ``);
+        vxMsg = vxMsg.replaceAll(iLink, tempILink);
       }
-      let vxMsg = msg.content;
-      let msgAttachments = [];
-      let allowedMentionsObject = { parse: [] };
+      vxMsg = vxMsg.replaceAll(`instagram.com`, `ddinstagram.com`);
+    }
+    if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim)) {
       let convertToDomain = "fxtwitter";
 
       let toggleObj = globalToggleFile[msg.guildId];
@@ -111,6 +499,7 @@ client.on("messageCreate", async (msg) => {
       let qTLinkConversion = quoteTObj.linkConversion;
       let retweetObj = globalRetweetFile[msg.guildId];
       let dMediaObj = globalDMediaFile[msg.guildId];
+      let translateObj = globalTranslateFile[msg.guildId];
 
       let tweetsData = {};
       if (Object.values(dMediaObj.toggle).every((val) => val === true)) {
@@ -123,7 +512,7 @@ client.on("messageCreate", async (msg) => {
         qTLinkConversion.polls = toggleObj.polls;
       }
       if (retweetObj.deleteOriginalLink) {
-        let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
 
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("status/") + 7);
@@ -145,12 +534,12 @@ client.on("messageCreate", async (msg) => {
           tweetsToDelete.push(
             ...Object.keys(tweetsData).filter((tLink) => {
               let tempStringStart = `^RT @${tweetsData[tLink].author.screen_name}: `;
-              let authorRegex = new RegExp(tempStringStart);
-              let authorTest = authorRegex.test(tweetsData[rLink].text);
+              let authorRegex = new RegExp(tempStringStart.trim());
+              let authorTest = authorRegex.test(tweetsData[rLink].text.trim());
               let retweetText = tweetsData[rLink].text.substring(tempStringStart.length - 1, tweetsData[rLink].text.length - 1);
-              retweetText = retweetText.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
-              let textRegex = new RegExp(`^(${retweetText})`);
-              let textTest = textRegex.test(tweetsData[tLink].text);
+              retweetText.trim() === ":" ? (retweetText = "") : (retweetText = retweetText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+              let textRegex = new RegExp(`^(${retweetText.trim()})`);
+              let textTest = textRegex.test(tweetsData[tLink].text.trim());
               let retweetCountTest = tweetsData[rLink].retweets === tweetsData[tLink].retweets;
               return authorTest && textTest && retweetCountTest;
             })
@@ -161,7 +550,7 @@ client.on("messageCreate", async (msg) => {
         });
       }
       if (quoteTObj.deleteQuotedLink) {
-        let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
 
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("status/") + 7);
@@ -189,9 +578,17 @@ client.on("messageCreate", async (msg) => {
       if (!dMediaObj.toggle && Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
         return;
       } else if (!dMediaObj.toggle && Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
-        vxMsg = vxMsg.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, convertToDomain);
+        if (translateObj.toggle) {
+          let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+          for (let tLink of twitterLinks) {
+            let tempFXLink = `https://${convertToDomain}.com/`.concat(tLink.match(/(status\/)\d*/gi)[0], `/`, translateObj.languageCode);
+            vxMsg = vxMsg.replaceAll(tLink, tempFXLink);
+          }
+        } else {
+          vxMsg = vxMsg.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, convertToDomain);
+        }
       } else {
-        let twitterLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
         let replaceTwitterLinks = [];
         if (Object.keys(tweetsData).length === 0) {
           for (let i of twitterLinks) {
@@ -263,7 +660,7 @@ client.on("messageCreate", async (msg) => {
                 }
                 vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-              } else if ( (!tweetsData[rLink].hasOwnProperty("media")||dMediaObj.quoteTweet.preferQuoteTweet)&&dMediaObj.quoteTweet.convert  && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
+              } else if ((!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && dMediaObj.quoteTweet.convert && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
                 let mosaicLink = tweetsData[rLink].quote.media.mosaic.formats[Object.keys(tweetsData[rLink].quote.media.mosaic.formats)[0]];
                 vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
@@ -283,11 +680,11 @@ client.on("messageCreate", async (msg) => {
               (dMediaObj.toggle.photos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) ||
               (dMediaObj.toggle.videos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos"))
             ) {
-              let tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}`;
+              let tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
               vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
               replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
             } else if ((dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) || (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos"))) {
-              let tempFXLink = rLink.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, "d.fxtwitter");
+              let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
               vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
               replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
             }
@@ -296,33 +693,34 @@ client.on("messageCreate", async (msg) => {
         if (!Object.values(dMediaObj.toggle).every((val) => val === false)) {
           replaceTwitterLinks.forEach((rLink) => {
             if (dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) {
-              let tempFXLink = rLink.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, "d.fxtwitter");
+              let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
               if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) {
-                tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}`;
+                tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
               }
               vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
               replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
             } else if (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos")) {
-              let tempFXLink = rLink.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, "d.fxtwitter");
+              let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
               if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos")) {
-                tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}`;
+                tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
               }
               vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
               replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
             }
           });
         }
-        
-
         for (let j of replaceTwitterLinks) {
-          let tempFXLink = j.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, convertToDomain);
+          let tempFXLink = `https://${convertToDomain}.com/`.concat(j.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
           vxMsg = vxMsg.replaceAll(j, tempFXLink);
         }
       }
-
-      if (!/fxtwitter\.com/gim.test(vxMsg)) {
+    }
+    if (vxMsg !== msg.content.replaceAll(")", " ".concat(`)`))) {
+      if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
         return;
       }
+      let msgAttachments = [];
+      let allowedMentionsObject = { parse: [] };
       if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
         let removeFile = {};
         try {
@@ -432,6 +830,93 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await interaction.reply({ content: "Pong!" });
     return;
   }
+  if (interaction.commandName === "convertinstagram") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateGlobalInstaConversionFile();
+    });
+    let instaConversionFile = {};
+    let interactionGuildID = interaction.guildId;
+    try {
+      instaConversionFile = JSON.parse(pako.inflate(fs.readFileSync("instagram-conversion-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync instagram conversion interaction", err.code);
+    }
+    if (instaConversionFile.hasOwnProperty(interactionGuildID)) {
+      instaConversionFile[interactionGuildID].toggle = !instaConversionFile[interactionGuildID].toggle;
+    } else {
+      instaConversionFile[guild.id] = { toggle: true };
+    }
+    fs.writeFile("instagram-conversion-list.txt", pako.deflate(JSON.stringify(instaConversionFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in instagram conversion list interaction   ", err.code);
+      } else {
+        let tempContent = `Toggled instagram link conversion ${instaConversionFile[interactionGuildID].toggle ? `on` : `off`}`;
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
+  }
+  if (interaction.commandName === "translate") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateGlobalTranslateFile();
+    });
+    let translateFile = {};
+    let language = interaction.options.getString("language");
+    let interactionGuildID = interaction.guildId;
+    let translateActivated = false;
+    try {
+      translateFile = JSON.parse(pako.inflate(fs.readFileSync("translate-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync translate interaction", err.code);
+    }
+    if (translateFile.hasOwnProperty(interactionGuildID)) {
+      if (interaction.options.getSubcommand() === "toggle") {
+        translateFile[interactionGuildID].toggle = !translateFile[interactionGuildID].toggle;
+      } else if (interaction.options.getSubcommand() === "language") {
+        const languageRegex = new RegExp(`^${language}$`, "ig");
+        let filteredEngNames = Object.keys(englishISOLanguages).filter((engName) => {
+          return languageRegex.test(engName);
+        });
+        let filteredNatNames = Object.keys(nativeISOLanguages).filter((natName) => {
+          return languageRegex.test(natName);
+        });
+        if (filteredEngNames.length > 0) {
+          translateFile[interactionGuildID].languageCode = englishISOLanguages[filteredEngNames[0]];
+        } else if (filteredNatNames.length > 0) {
+          translateFile[interactionGuildID].languageCode = nativeISOLanguages[filteredNatNames[0]];
+        } else {
+          await interaction.reply({ content: `Language not recognized. Please refer to the ISO 639-1 standard for the list of supported languages.\nYou can check the languages in ISO 639-1 here:\nhttps://en.wikipedia.org/wiki/List_of_ISO_639-1_codes` });
+          return;
+        }
+        if (!translateFile[interactionGuildID].toggle) {
+          translateFile[interactionGuildID].toggle = true;
+          translateActivated = true;
+        }
+      }
+    } else {
+      translateFile[interactionGuildID] = { toggle: false, languageCode: "en" };
+    }
+    fs.writeFile("translate-list.txt", pako.deflate(JSON.stringify(translateFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in translate list interaction   ", err.code);
+      } else {
+        let tempContent = `Toggled tweet translation ${translateFile[interactionGuildID].toggle ? `on` : `off`}`;
+        if (interaction.options.getSubcommand() === "language") {
+          tempContent = `Language set to ${
+            Object.keys(englishISOLanguages).filter((engName) => {
+              return englishISOLanguages[engName] === translateFile[interactionGuildID].languageCode;
+            })[0]
+          }${translateActivated ? ` and turned on translation.` : `.`}`;
+        }
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
+  }
   if (interaction.commandName === "directmedia") {
     const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
     const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
@@ -478,7 +963,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     fs.writeFile("direct-media-list.txt", pako.deflate(JSON.stringify(dMediaFile)), { encoding: "utf8" }, async (err) => {
       if (err) {
-        console.log("error in file writing in all direct media interaction   ", err.code);
+        console.log("error in file writing in direct media interaction   ", err.code);
       } else {
         let tempContent = ``;
         if (interaction.options.getSubcommand() === "multiplephotos") {
@@ -1169,6 +1654,8 @@ client.on("ready", () => {
   InitQuoteTweetList();
   InitRetweetList();
   InitDirectMediaList();
+  InitTranslateList();
+  InitInstaConversionList();
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
@@ -1188,11 +1675,48 @@ client.on("ready", () => {
     UpdateGlobalQuoteTweetFile();
     UpdateGlobalRetweetFile();
     UpdateGlobalDMediaFile();
+    UpdateGlobalTranslateFile();
+    UpdateGlobalInstaConversionFile();
   }, 500);
 });
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
-
+function InitInstaConversionList() {
+  let instaConversionFile = {};
+  try {
+    instaConversionFile = JSON.parse(pako.inflate(fs.readFileSync("instagram-conversion-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in instagram conversion list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!instaConversionFile.hasOwnProperty(guild.id)) {
+      instaConversionFile[guild.id] = { toggle: true };
+    }
+  });
+  fs.writeFile("instagram-conversion-list.txt", pako.deflate(JSON.stringify(instaConversionFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init instagram conversion list write", err.code);
+    }
+  });
+}
+function InitTranslateList() {
+  let translateFile = {};
+  try {
+    translateFile = JSON.parse(pako.inflate(fs.readFileSync("translate-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in translate list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!translateFile.hasOwnProperty(guild.id)) {
+      translateFile[guild.id] = { toggle: false, languageCode: "en" };
+    }
+  });
+  fs.writeFile("translate-list.txt", pako.deflate(JSON.stringify(translateFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init translate list write", err.code);
+    }
+  });
+}
 function InitDirectMediaList() {
   let dMediaFile = {};
   try {
@@ -1405,6 +1929,24 @@ function UpdateGlobalDMediaFile() {
     console.log("Error in text read file sync msg direct media update function", err.code);
   }
   globalDMediaFile = dMediaFile;
+}
+function UpdateGlobalTranslateFile() {
+  let translateFile = {};
+  try {
+    translateFile = JSON.parse(pako.inflate(fs.readFileSync("translate-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg translate list update function", err.code);
+  }
+  globalTranslateFile = translateFile;
+}
+function UpdateGlobalInstaConversionFile() {
+  let instaConversionFile = {};
+  try {
+    instaConversionFile = JSON.parse(pako.inflate(fs.readFileSync("instagram-conversion-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg instagram conversion list update function", err.code);
+  }
+  globalInstaConversionFile = instaConversionFile;
 }
 
 function getBotWebhook(set) {
