@@ -77,7 +77,7 @@ const directMediaCommand = new SlashCommandBuilder()
     subcommand
       .setName("channel")
       .setDescription("Change the permissions for which channels to convert in. All channels by default.")
-      .addStringOption((option) => option.setName("action").setDescription("The action to be performed").setRequired(true).addChoices({ name: "list", value: "list" }, { name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "allowall", value: "all" }, { name: "allownone", value: "clear" }))
+      .addStringOption((option) => option.setName("action").setDescription("The action to be performed").setRequired(true).addChoices({ name: "list", value: "list" }, { name: "allow", value: "add" }, { name: "prohibit", value: "remove" }, { name: "allowall", value: "all" }, { name: "prohibitall", value: "clear" }))
       .addChannelOption((channelOption) => channelOption.setName("channel").setDescription("Select a channel for add or remove options."))
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
@@ -581,9 +581,9 @@ client.on("messageCreate", async (msg) => {
           vxMsg = vxMsg.replaceAll(dLink, "");
         });
       }
-      if (Object.values(toggleObj).every((val) => val === false) && Object.values(dMediaObj.toggle).every((val) => val === false)&&(qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
+      if (Object.values(toggleObj).every((val) => val === false) && Object.values(dMediaObj.toggle).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
         return;
-      } else if (Object.values(toggleObj).every((val) => val === true)&&Object.values(dMediaObj.toggle).every((val) => val === false) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
+      } else if (Object.values(toggleObj).every((val) => val === true) && Object.values(dMediaObj.toggle).every((val) => val === false) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
         if (translateObj.toggle) {
           let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
           for (let tLink of twitterLinks) {
@@ -973,23 +973,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (action === "list") {
           let channelNames = [];
           await interaction.member.guild.channels.cache.each((gChannel) => {
-            if (dMediaFile[interactionGuildID].channelList.includes("all")||dMediaFile[interactionGuildID].channelList.includes(gChannel.id)) {
+            if (dMediaFile[interactionGuildID].channelList.includes(gChannel.id)) {
               channelNames.push("**" + gChannel.name + "**");
             }
           });
-          let tempContent=`Direct media conversion is allowed in the following channels/categories:\n\n${channelNames.join(", ")}`;
-          if(channelNames.length===0){
-            tempContent=`Direct media conversion is not allowed in any channels`;
+          let tempContent = `Direct media conversion is allowed in the following channels/categories:\n\n${channelNames.join(", ")}`;
+          if (channelNames.length === 0) {
+            tempContent = `Direct media conversion is not allowed in any channel or category.`;
+          } else if (dMediaFile[interactionGuildID].channelList.includes("all")) {
+            tempContent = `Direct media conversions are allowed in all channels and categories`;
           }
           await interaction.reply({ content: tempContent });
           return;
         } else if (action === "add") {
           if (channel === null) {
-            await interaction.reply({ content: "Please specify a channel." });
+            await interaction.reply({ content: "Please specify a channel or category." });
             return;
           }
           if (dMediaFile[interactionGuildID].channelList.includes("all")) {
-            await interaction.reply({ content: `Direct media conversion is already allowed in all channels.` });
+            await interaction.reply({ content: `Direct media conversions are already allowed in all channels and categories.` });
             return;
           } else if (dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
             await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already allowed.` });
@@ -998,11 +1000,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           dMediaFile[interactionGuildID].channelList.push(channel.id);
         } else if (action === "remove") {
           if (channel === null) {
-            await interaction.reply({ content: "Please specify a channel." });
+            await interaction.reply({ content: "Please specify a channel or category." });
             return;
           }
-          if (dMediaFile[interactionGuildID].channelList.length===0) {
-            await interaction.reply({ content: `Direct media conversion is already prohibited in all channels.` });
+          if (dMediaFile[interactionGuildID].channelList.length === 0) {
+            await interaction.reply({ content: `Direct media conversions are already prohibited in all channels and categories.` });
             return;
           } else if (!dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
             await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already prohibited.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.` });
@@ -1070,10 +1072,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
               tempContent = `Direct media conversions will not be allowed in the ${channel.name} channel/category.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.`;
               break;
             case "all":
-              tempContent = `Direct media conversions will be allowed in all channels.`;
+              tempContent = `Direct media conversions will be allowed in all channels and categories.`;
               break;
             case "clear":
-              tempContent = `Direct media conversions will not be allowed in any channel.`;
+              tempContent = `Direct media conversions will not be allowed in any channel or category.`;
               break;
             default:
               break;
@@ -1805,7 +1807,7 @@ function InitDirectMediaList() {
   }
   client.guilds.cache.forEach((guild) => {
     if (!dMediaFile.hasOwnProperty(guild.id)) {
-      dMediaFile[guild.id] = { toggle: { photos: false, videos: false }, multiplePhotos: { convert: true, replaceWithMosaic: false }, quoteTweet: { convert: false, preferQuoteTweet: false },channelList:["all"] };
+      dMediaFile[guild.id] = { toggle: { photos: false, videos: false }, multiplePhotos: { convert: true, replaceWithMosaic: false }, quoteTweet: { convert: false, preferQuoteTweet: false }, channelList: ["all"] };
     }
   });
   fs.writeFile("direct-media-list.txt", pako.deflate(JSON.stringify(dMediaFile)), { encoding: "utf8" }, async (err) => {
