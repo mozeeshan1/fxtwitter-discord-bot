@@ -1005,15 +1005,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           if (dMediaFile[interactionGuildID].channelList.length === 0) {
             await interaction.reply({ content: `Direct media conversions are already prohibited in all channels and categories.` });
             return;
-          } else if (!dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
-            await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already prohibited.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.` });
-            return;
           } else if (dMediaFile[interactionGuildID].channelList.includes("all")) {
             dMediaFile[interactionGuildID].channelList = [];
             for (let cID of channel.guild.channels.cache.keys()) {
               dMediaFile[interactionGuildID].channelList.push(cID);
             }
-          }
+          } else if (!dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
+            await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already prohibited.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.` });
+            return;
+          } 
           dMediaFile[interactionGuildID].channelList.splice(dMediaFile[interactionGuildID].channelList.indexOf(channel.id), 1);
         } else if (action === "all") {
           dMediaFile[interactionGuildID].channelList = ["all"];
