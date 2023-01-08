@@ -3,7 +3,6 @@ const fs = require("fs");
 const pako = require("pako");
 
 const { Client, GatewayIntentBits, SlashCommandBuilder, Events, REST, Routes, PermissionFlagsBits, roleMention, userMention } = require("discord.js");
-const { log } = require("console");
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences],
 });
@@ -73,6 +72,13 @@ const directMediaCommand = new SlashCommandBuilder()
       .setName("quotetweet")
       .setDescription("Change the options for quote tweet behaviour. Conversion off by default.")
       .addStringOption((option) => option.setName("option").setDescription("Select an option.").setRequired(true).addChoices({ name: "convert", value: "convert" }, { name: "preferquotetweet", value: "preferquotetweet" }))
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("channel")
+      .setDescription("Change the permissions for which channels to convert in. All channels by default.")
+      .addStringOption((option) => option.setName("action").setDescription("The action to be performed").setRequired(true).addChoices({ name: "list", value: "list" }, { name: "add", value: "add" }, { name: "remove", value: "remove" }, { name: "allowall", value: "all" }, { name: "allownone", value: "clear" }))
+      .addChannelOption((channelOption) => channelOption.setName("channel").setDescription("Select a channel for add or remove options."))
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 const translateTweetCommand = new SlashCommandBuilder()
@@ -483,10 +489,10 @@ client.on("messageCreate", async (msg) => {
     // }
     let vxMsg = msg.content.replaceAll(")", " ".concat(`)`));
 
-    if (globalInstaConversionFile[msg.guildId].toggle&&msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
+    if (globalInstaConversionFile[msg.guildId].toggle && msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
       let instagramLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(instagram.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
       for (let iLink of instagramLinks) {
-        tempILink = iLink.replaceAll(/(?=\/\?)\/[^\/]*/igm, ``);
+        tempILink = iLink.replaceAll(/(?=\/\?)\/[^\/]*/gim, ``);
         vxMsg = vxMsg.replaceAll(iLink, tempILink);
       }
       vxMsg = vxMsg.replaceAll(`instagram.com`, `ddinstagram.com`);
@@ -502,7 +508,7 @@ client.on("messageCreate", async (msg) => {
       let translateObj = globalTranslateFile[msg.guildId];
 
       let tweetsData = {};
-      if (Object.values(dMediaObj.toggle).every((val) => val === true)) {
+      if (Object.values(dMediaObj.toggle).every((val) => val === true) && (dMediaObj.channelList.includes("all") || dMediaObj.channelList.includes(msg.channelId) || dMediaObj.channelList.includes(msg.channel.parentId))) {
         convertToDomain = "d.fxtwitter";
       }
       if (qTLinkConversion.follow) {
@@ -575,9 +581,9 @@ client.on("messageCreate", async (msg) => {
           vxMsg = vxMsg.replaceAll(dLink, "");
         });
       }
-      if (!dMediaObj.toggle && Object.values(toggleObj).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
+      if (Object.values(toggleObj).every((val) => val === false) && Object.values(dMediaObj.toggle).every((val) => val === false)&&(qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
         return;
-      } else if (!dMediaObj.toggle && Object.values(toggleObj).every((val) => val === true) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
+      } else if (Object.values(toggleObj).every((val) => val === true)&&Object.values(dMediaObj.toggle).every((val) => val === false) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
         if (translateObj.toggle) {
           let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
           for (let tLink of twitterLinks) {
@@ -649,65 +655,66 @@ client.on("messageCreate", async (msg) => {
             }
           });
         }
-
-        if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.multiplePhotos.convert) {
-          if (dMediaObj.toggle.photos && dMediaObj.multiplePhotos.replaceWithMosaic) {
-            replaceTwitterLinks.forEach((rLink) => {
-              if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
-                let mosaicLink = tweetsData[rLink].media.mosaic.formats[Object.keys(tweetsData[rLink].media.mosaic.formats)[0]];
-                if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
-                  mosaicLink = tweetsData[rLink].quote.media.mosaic.formats[Object.keys(tweetsData[rLink].quote.media.mosaic.formats)[0]];
+        if (dMediaObj.channelList.includes("all") || dMediaObj.channelList.includes(msg.channelId) || dMediaObj.channelList.includes(msg.channel.parentId)) {
+          if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.multiplePhotos.convert) {
+            if (dMediaObj.toggle.photos && dMediaObj.multiplePhotos.replaceWithMosaic) {
+              replaceTwitterLinks.forEach((rLink) => {
+                if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
+                  let mosaicLink = tweetsData[rLink].media.mosaic.formats[Object.keys(tweetsData[rLink].media.mosaic.formats)[0]];
+                  if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
+                    mosaicLink = tweetsData[rLink].quote.media.mosaic.formats[Object.keys(tweetsData[rLink].quote.media.mosaic.formats)[0]];
+                  }
+                  vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
+                  replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
+                } else if ((!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && dMediaObj.quoteTweet.convert && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
+                  let mosaicLink = tweetsData[rLink].quote.media.mosaic.formats[Object.keys(tweetsData[rLink].quote.media.mosaic.formats)[0]];
+                  vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
+                  replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
                 }
-                vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
-                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-              } else if ((!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && dMediaObj.quoteTweet.convert && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
-                let mosaicLink = tweetsData[rLink].quote.media.mosaic.formats[Object.keys(tweetsData[rLink].quote.media.mosaic.formats)[0]];
-                vxMsg = vxMsg.replaceAll(rLink, mosaicLink);
-                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-              }
-            });
-          } else if (dMediaObj.toggle.photos && !dMediaObj.multiplePhotos.replaceWithMosaic) {
+              });
+            } else if (dMediaObj.toggle.photos && !dMediaObj.multiplePhotos.replaceWithMosaic) {
+              replaceTwitterLinks.forEach((rLink) => {
+                if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
+                  replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
+                }
+              });
+            }
+          }
+          if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.quoteTweet.convert) {
             replaceTwitterLinks.forEach((rLink) => {
-              if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
+              if (
+                (dMediaObj.toggle.photos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) ||
+                (dMediaObj.toggle.videos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos"))
+              ) {
+                let tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+                vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
+                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
+              } else if ((dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) || (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos"))) {
+                let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               }
             });
           }
-        }
-        if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.quoteTweet.convert) {
-          replaceTwitterLinks.forEach((rLink) => {
-            if (
-              (dMediaObj.toggle.photos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) ||
-              (dMediaObj.toggle.videos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos"))
-            ) {
-              let tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
-              vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
-              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-            } else if ((dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) || (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos"))) {
-              let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
-              vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
-              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-            }
-          });
-        }
-        if (!Object.values(dMediaObj.toggle).every((val) => val === false)) {
-          replaceTwitterLinks.forEach((rLink) => {
-            if (dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) {
-              let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
-              if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) {
-                tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+          if (Object.values(dMediaObj.toggle).some((val) => val === true)) {
+            replaceTwitterLinks.forEach((rLink) => {
+              if (dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) {
+                let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) {
+                  tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+                }
+                vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
+                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
+              } else if (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos")) {
+                let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos")) {
+                  tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+                }
+                vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
+                replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               }
-              vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
-              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-            } else if (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos")) {
-              let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
-              if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos")) {
-                tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
-              }
-              vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
-              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
-            }
-          });
+            });
+          }
         }
         for (let j of replaceTwitterLinks) {
           let tempFXLink = `https://${convertToDomain}.com/`.concat(j.match(/(status\/)\d*/gi)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
@@ -927,6 +934,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     let option = interaction.options.getString("option");
     let type = interaction.options.getString("type");
     let interactionGuildID = interaction.guildId;
+    let action = interaction.options.getString("action");
+    let channel = interaction.options.getChannel("channel");
     try {
       dMediaFile = JSON.parse(pako.inflate(fs.readFileSync("direct-media-list.txt"), { to: "string" }));
     } catch (err) {
@@ -957,9 +966,62 @@ client.on(Events.InteractionCreate, async (interaction) => {
             dMediaFile[interactionGuildID].quoteTweet.convert = true;
           }
         }
+      } else if (interaction.options.getSubcommand() === "channel") {
+        if (!dMediaFile[interactionGuildID].hasOwnProperty("channelList")) {
+          dMediaFile[interactionGuildID].channelList = ["all"];
+        }
+        if (action === "list") {
+          let channelNames = [];
+          await interaction.member.guild.channels.cache.each((gChannel) => {
+            if (dMediaFile[interactionGuildID].channelList.includes("all")||dMediaFile[interactionGuildID].channelList.includes(gChannel.id)) {
+              channelNames.push("**" + gChannel.name + "**");
+            }
+          });
+          let tempContent=`Direct media conversion is allowed in the following channels/categories:\n\n${channelNames.join(", ")}`;
+          if(channelNames.length===0){
+            tempContent=`Direct media conversion is not allowed in any channels`;
+          }
+          await interaction.reply({ content: tempContent });
+          return;
+        } else if (action === "add") {
+          if (channel === null) {
+            await interaction.reply({ content: "Please specify a channel." });
+            return;
+          }
+          if (dMediaFile[interactionGuildID].channelList.includes("all")) {
+            await interaction.reply({ content: `Direct media conversion is already allowed in all channels.` });
+            return;
+          } else if (dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
+            await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already allowed.` });
+            return;
+          }
+          dMediaFile[interactionGuildID].channelList.push(channel.id);
+        } else if (action === "remove") {
+          if (channel === null) {
+            await interaction.reply({ content: "Please specify a channel." });
+            return;
+          }
+          if (dMediaFile[interactionGuildID].channelList.length===0) {
+            await interaction.reply({ content: `Direct media conversion is already prohibited in all channels.` });
+            return;
+          } else if (!dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
+            await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already prohibited.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.` });
+            return;
+          } else if (dMediaFile[interactionGuildID].channelList.includes("all")) {
+            dMediaFile[interactionGuildID].channelList = [];
+            for (let cID of channel.guild.channels.cache.keys()) {
+              dMediaFile[interactionGuildID].channelList.push(cID);
+            }
+          }
+          dMediaFile[interactionGuildID].channelList.splice(dMediaFile[interactionGuildID].channelList.indexOf(channel.id), 1);
+        } else if (action === "all") {
+          dMediaFile[interactionGuildID].channelList = ["all"];
+        } else if (action === "clear") {
+          dMediaFile[interactionGuildID].channelList = [];
+        }
       }
     } else {
-      dMediaFile[interactionGuildID] = { toggle: { photos: false, videos: false }, multiplePhotos: { convert: true, replaceWithMosaic: false }, quoteTweet: { convert: false, preferQuoteTweet: false } };
+      dMediaFile[interactionGuildID] = { toggle: { photos: false, videos: false }, multiplePhotos: { convert: true, replaceWithMosaic: false }, quoteTweet: { convert: false, preferQuoteTweet: false }, channelList: ["all"] };
     }
     fs.writeFile("direct-media-list.txt", pako.deflate(JSON.stringify(dMediaFile)), { encoding: "utf8" }, async (err) => {
       if (err) {
@@ -969,10 +1031,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.options.getSubcommand() === "multiplephotos") {
           switch (option) {
             case "convert":
-              tempContent = `Toggled link conversion for tweets containing multiple photos ${dMediaFile[interactionGuildID].multiplePhotos.convert ? `on` : `off`}`;
+              tempContent = `Toggled link conversion for tweets containing multiple photos ${dMediaFile[interactionGuildID].multiplePhotos.convert ? `on` : `off`}.`;
               break;
             case "replacewithmosaic":
-              tempContent = `Toggled mosaic conversion for tweets containing multiple photos ${dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic ? `on` : `off`}`;
+              tempContent = `Toggled mosaic conversion for tweets containing multiple photos ${dMediaFile[interactionGuildID].multiplePhotos.replaceWithMosaic ? `on` : `off`}.`;
               break;
             default:
               break;
@@ -980,10 +1042,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         } else if (interaction.options.getSubcommand() === "toggle") {
           switch (type) {
             case "photos":
-              tempContent = `Toggled direct media conversion for tweets with photos ${dMediaFile[interactionGuildID].toggle.photos ? `on` : `off`}`;
+              tempContent = `Toggled direct media conversion for tweets with photos ${dMediaFile[interactionGuildID].toggle.photos ? `on` : `off`}.`;
               break;
             case "videos":
-              tempContent = `Toggled direct media conversion for tweets with videos ${dMediaFile[interactionGuildID].toggle.videos ? `on` : `off`}`;
+              tempContent = `Toggled direct media conversion for tweets with videos ${dMediaFile[interactionGuildID].toggle.videos ? `on` : `off`}.`;
               break;
             default:
               break;
@@ -991,10 +1053,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
         } else if (interaction.options.getSubcommand() === "quotetweet") {
           switch (option) {
             case "convert":
-              tempContent = `Toggled link conversion for quote tweets ${dMediaFile[interactionGuildID].quoteTweet.convert ? `on` : `off`}`;
+              tempContent = `Toggled link conversion for quote tweets ${dMediaFile[interactionGuildID].quoteTweet.convert ? `on` : `off`}.`;
               break;
             case "preferquotetweet":
-              tempContent = `Toggled preference for quote tweets conversion ${dMediaFile[interactionGuildID].quoteTweet.preferQuoteTweet ? `on` : `off`}`;
+              tempContent = `Toggled preference for quote tweets conversion ${dMediaFile[interactionGuildID].quoteTweet.preferQuoteTweet ? `on` : `off`}.`;
+              break;
+            default:
+              break;
+          }
+        } else if (interaction.options.getSubcommand() === "channel") {
+          switch (action) {
+            case "add":
+              tempContent = `Direct media conversions will be allowed in the ${channel.name} channel/category.`;
+              break;
+            case "remove":
+              tempContent = `Direct media conversions will not be allowed in the ${channel.name} channel/category.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.`;
+              break;
+            case "all":
+              tempContent = `Direct media conversions will be allowed in all channels.`;
+              break;
+            case "clear":
+              tempContent = `Direct media conversions will not be allowed in any channel.`;
               break;
             default:
               break;
@@ -1726,7 +1805,7 @@ function InitDirectMediaList() {
   }
   client.guilds.cache.forEach((guild) => {
     if (!dMediaFile.hasOwnProperty(guild.id)) {
-      dMediaFile[guild.id] = { toggle: { photos: false, videos: false }, multiplePhotos: { convert: true, replaceWithMosaic: false }, quoteTweet: { convert: false, preferQuoteTweet: false } };
+      dMediaFile[guild.id] = { toggle: { photos: false, videos: false }, multiplePhotos: { convert: true, replaceWithMosaic: false }, quoteTweet: { convert: false, preferQuoteTweet: false },channelList:["all"] };
     }
   });
   fs.writeFile("direct-media-list.txt", pako.deflate(JSON.stringify(dMediaFile)), { encoding: "utf8" }, async (err) => {
