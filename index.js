@@ -978,12 +978,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
             }
           });
           let tempContent = `Direct media conversion is allowed in the following channels/categories:\n\n${channelNames.join(", ")}`;
-          if (channelNames.length === 0) {
-            tempContent = `Direct media conversion is not allowed in any channel or category.`;
-          } else if (dMediaFile[interactionGuildID].channelList.includes("all")) {
+          if (dMediaFile[interactionGuildID].channelList.includes("all")) {
             tempContent = `Direct media conversions are allowed in all channels and categories`;
-          }
-          await interaction.reply({ content: tempContent });
+          } else if (channelNames.length === 0) {
+            tempContent = `Direct media conversion is not allowed in any channel or category.`;
+          } await interaction.reply({ content: tempContent });
           return;
         } else if (action === "add") {
           if (channel === null) {
