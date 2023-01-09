@@ -488,7 +488,9 @@ client.on("messageCreate", async (msg) => {
     //   msg.reply("pong");
     // }
     let vxMsg = msg.content.replaceAll(")", " ".concat(`)`));
-
+    if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
+      return;
+    }
     if (globalInstaConversionFile[msg.guildId].toggle && msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
       let instagramLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(instagram.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
       for (let iLink of instagramLinks) {
@@ -655,7 +657,7 @@ client.on("messageCreate", async (msg) => {
             }
           });
         }
-        if (dMediaObj.channelList.includes("all") || dMediaObj.channelList.includes(msg.channelId) || (typeof msg.channel.parentId!== "undefined" &&dMediaObj.channelList.includes(msg.channel.parentId))) {
+        if (dMediaObj.channelList.includes("all") || dMediaObj.channelList.includes(msg.channelId) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId))) {
           if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.multiplePhotos.convert) {
             if (dMediaObj.toggle.photos && dMediaObj.multiplePhotos.replaceWithMosaic) {
               replaceTwitterLinks.forEach((rLink) => {
@@ -723,9 +725,6 @@ client.on("messageCreate", async (msg) => {
       }
     }
     if (vxMsg !== msg.content.replaceAll(")", " ".concat(`)`))) {
-      if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
-        return;
-      }
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
       if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
@@ -982,7 +981,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             tempContent = `Direct media conversions are allowed in all channels and categories`;
           } else if (channelNames.length === 0) {
             tempContent = `Direct media conversion is not allowed in any channel or category.`;
-          } await interaction.reply({ content: tempContent });
+          }
+          await interaction.reply({ content: tempContent });
           return;
         } else if (action === "add") {
           if (channel === null) {
@@ -1013,7 +1013,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           } else if (!dMediaFile[interactionGuildID].channelList.includes(channel.id)) {
             await interaction.reply({ content: `Direct media conversion in the ${channel.name} channel/category is already prohibited.\n\nPlease note that the rules for channels take precedence over categories. So if a category is prohibited but a channel in the category is allowed, then direct media conversions will take place in the channel.` });
             return;
-          } 
+          }
           dMediaFile[interactionGuildID].channelList.splice(dMediaFile[interactionGuildID].channelList.indexOf(channel.id), 1);
         } else if (action === "all") {
           dMediaFile[interactionGuildID].channelList = ["all"];
