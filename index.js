@@ -491,7 +491,7 @@ client.on("messageCreate", async (msg) => {
     if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
       return;
     }
-    if (typeof globalInstaConversionFile[msg.guildId]!== "undefined" &&globalInstaConversionFile[msg.guildId].toggle && msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
+    if (typeof globalInstaConversionFile[msg.guildId] !== "undefined" && globalInstaConversionFile[msg.guildId].toggle && msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
       let instagramLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(instagram.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
       for (let iLink of instagramLinks) {
         tempILink = iLink.replaceAll(/(?=\/\?)\/[^\/]*/gim, ``);
@@ -510,7 +510,7 @@ client.on("messageCreate", async (msg) => {
       let translateObj = globalTranslateFile[msg.guildId];
 
       let tweetsData = {};
-      if (Object.values(dMediaObj.toggle).every((val) => val === true) && ((typeof dMediaObj.channelList !== "undefined" && (dMediaObj.channelList.includes("all")) || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId))))) {
+      if (Object.values(dMediaObj.toggle).every((val) => val === true) && ((typeof dMediaObj.channelList !== "undefined" && dMediaObj.channelList.includes("all")) || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
         convertToDomain = "d.fxtwitter";
       }
       if (qTLinkConversion.follow) {
@@ -558,7 +558,7 @@ client.on("messageCreate", async (msg) => {
         });
       }
       if (quoteTObj.deleteQuotedLink) {
-        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
+        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim)||[];
 
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("status/") + 7);
@@ -636,28 +636,30 @@ client.on("messageCreate", async (msg) => {
         }
         if (!qTLinkConversion.ignore) {
           quotedTweets.forEach((qLink) => {
-            if (tweetsData[qLink].quote.hasOwnProperty("media")) {
-              if (tweetsData[qLink].quote.media.hasOwnProperty("photos") && qTLinkConversion.photos) {
+            if (typeof tweetsData[qLink].quote !== "undefined") {
+              if (tweetsData[qLink].quote.hasOwnProperty("media")) {
+                if (tweetsData[qLink].quote.media.hasOwnProperty("photos") && qTLinkConversion.photos) {
+                  replaceTwitterLinks.push(qLink);
+                } else if (tweetsData[qLink].quote.media.hasOwnProperty("videos") && qTLinkConversion.videos) {
+                  replaceTwitterLinks.push(qLink);
+                } else if (tweetsData[qLink].quote.media.hasOwnProperty("photos") && !qTLinkConversion.photos && replaceTwitterLinks.includes(qLink)) {
+                  replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
+                } else if (tweetsData[qLink].quote.media.hasOwnProperty("videos") && !qTLinkConversion.videos && replaceTwitterLinks.includes(qLink)) {
+                  replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
+                }
+              } else if (tweetsData[qLink].quote.hasOwnProperty("poll") && qTLinkConversion.polls) {
                 replaceTwitterLinks.push(qLink);
-              } else if (tweetsData[qLink].quote.media.hasOwnProperty("videos") && qTLinkConversion.videos) {
+              } else if (!(tweetsData[qLink].quote.hasOwnProperty("media") || tweetsData[qLink].quote.hasOwnProperty("poll")) && qTLinkConversion.text) {
                 replaceTwitterLinks.push(qLink);
-              } else if (tweetsData[qLink].quote.media.hasOwnProperty("photos") && !qTLinkConversion.photos && replaceTwitterLinks.includes(qLink)) {
+              } else if (tweetsData[qLink].quote.media.hasOwnProperty("poll") && !qTLinkConversion.polls && replaceTwitterLinks.includes(qLink)) {
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
-              } else if (tweetsData[qLink].quote.media.hasOwnProperty("videos") && !qTLinkConversion.videos && replaceTwitterLinks.includes(qLink)) {
+              } else if (!(tweetsData[qLink].quote.hasOwnProperty("media") || tweetsData[qLink].quote.hasOwnProperty("poll")) && !qTLinkConversion.text && replaceTwitterLinks.includes(qLink)) {
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
               }
-            } else if (tweetsData[qLink].quote.hasOwnProperty("poll") && qTLinkConversion.polls) {
-              replaceTwitterLinks.push(qLink);
-            } else if (!(tweetsData[qLink].quote.hasOwnProperty("media") || tweetsData[qLink].quote.hasOwnProperty("poll")) && qTLinkConversion.text) {
-              replaceTwitterLinks.push(qLink);
-            } else if (tweetsData[qLink].quote.media.hasOwnProperty("poll") && !qTLinkConversion.polls && replaceTwitterLinks.includes(qLink)) {
-              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
-            } else if (!(tweetsData[qLink].quote.hasOwnProperty("media") || tweetsData[qLink].quote.hasOwnProperty("poll")) && !qTLinkConversion.text && replaceTwitterLinks.includes(qLink)) {
-              replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(qLink), 1);
             }
           });
         }
-        if (typeof dMediaObj.channelList!=="undefined" &&(dMediaObj.channelList.includes("all") || (typeof msg.channelId !== "undefined" &&dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
+        if (typeof dMediaObj.channelList !== "undefined" && (dMediaObj.channelList.includes("all") || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
           if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.multiplePhotos.convert) {
             if (dMediaObj.toggle.photos && dMediaObj.multiplePhotos.replaceWithMosaic) {
               replaceTwitterLinks.forEach((rLink) => {
