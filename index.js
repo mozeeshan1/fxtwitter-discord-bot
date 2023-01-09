@@ -491,7 +491,7 @@ client.on("messageCreate", async (msg) => {
     if (!msg.guild.members.me.permissions.any("ManageWebhooks")) {
       return;
     }
-    if (globalInstaConversionFile[msg.guildId].toggle && msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
+    if (typeof globalInstaConversionFile[msg.guildId]!== "undefined" &&globalInstaConversionFile[msg.guildId].toggle && msg.content.match(/http(s)*:\/\/(www\.)*instagram.com/gim)) {
       let instagramLinks = msg.content.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(instagram.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
       for (let iLink of instagramLinks) {
         tempILink = iLink.replaceAll(/(?=\/\?)\/[^\/]*/gim, ``);
@@ -510,7 +510,7 @@ client.on("messageCreate", async (msg) => {
       let translateObj = globalTranslateFile[msg.guildId];
 
       let tweetsData = {};
-      if (Object.values(dMediaObj.toggle).every((val) => val === true) && (dMediaObj.channelList.includes("all") || (typeof msg.channelId !== "undefined" &&dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
+      if (Object.values(dMediaObj.toggle).every((val) => val === true) && ((typeof dMediaObj.channelList !== "undefind" && (dMediaObj.channelList.includes("all")) || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId))))) {
         convertToDomain = "d.fxtwitter";
       }
       if (qTLinkConversion.follow) {
@@ -657,7 +657,7 @@ client.on("messageCreate", async (msg) => {
             }
           });
         }
-        if (dMediaObj.channelList.includes("all") || (typeof msg.channelId !== "undefined" &&dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId))) {
+        if (typeof dMediaObj.channelList!=="undefind" &&(dMediaObj.channelList.includes("all") || (typeof msg.channelId !== "undefined" &&dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
           if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.multiplePhotos.convert) {
             if (dMediaObj.toggle.photos && dMediaObj.multiplePhotos.replaceWithMosaic) {
               replaceTwitterLinks.forEach((rLink) => {
