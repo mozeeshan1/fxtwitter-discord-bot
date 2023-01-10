@@ -1730,7 +1730,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
-  client.user.setActivity(+client.guilds.cache.size > 1 ? `Currently in ${client.guilds.cache.size} servers` : `Currently in ${client.guilds.cache.size} server`);
+  client.user.setActivity(client.guilds.cache.size > 1 ? `Currently in ${client.guilds.cache.size} servers` : `Currently in ${client.guilds.cache.size} server`);
   InitToggleList();
   InitMessageControlList();
   InitQuoteTweetList();
@@ -1742,15 +1742,15 @@ client.on("ready", () => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
       messageControlList[guild.id] = CheckMessageControls(guild.id);
-      if (guild.members.me.permissions.any("ManageWebhooks")) {
-        guild.fetchWebhooks().then((gWebhooks) => {
-          gWebhooks.forEach((gWebhook, wID) => {
-            if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
-              gWebhook.delete();
-            }
-          });
-        });
-      }
+      // if (guild.members.me.permissions.any("ManageWebhooks")) {
+      //   guild.fetchWebhooks().then((gWebhooks) => {
+      //     gWebhooks.forEach((gWebhook, wID) => {
+      //       if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
+      //         gWebhook.delete();
+      //       }
+      //     });
+      //   });
+      // }
     });
 
     UpdateGlobalToggleFile();
