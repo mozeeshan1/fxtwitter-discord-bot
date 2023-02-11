@@ -2,11 +2,12 @@ const Config = require("./config.json");
 const fs = require("fs");
 const pako = require("pako");
 
-const { Client, GatewayIntentBits, SlashCommandBuilder, Events, REST, Routes, PermissionFlagsBits, roleMention, userMention } = require("discord.js");
+const { Client, GatewayIntentBits, SlashCommandBuilder, Events, REST, Routes, PermissionFlagsBits, roleMention, userMention, GuildTemplate } = require("discord.js");
+const { log } = require("console");
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessageReactions],
 });
-const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
+const rest = new REST({ version: "10" }).setToken(Config["TEST TOKEN"]);
 const pingCommand = new SlashCommandBuilder().setName("ping").setDescription("Replies with pong");
 const mentionRemoveCommand = new SlashCommandBuilder()
   .setName("mention")
@@ -93,7 +94,18 @@ const translateTweetCommand = new SlashCommandBuilder()
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 const ddInstaCommand = new SlashCommandBuilder().setName("convertinstagram").setDescription("Toggle conversion of Instagram links to ddinstagram.").setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand, translateTweetCommand, ddInstaCommand];
+const delBotMessageCommand = new SlashCommandBuilder()
+  .setName("deletebotmessage")
+  .setDescription("Change settings of deleting bot messages with reactions.")
+  .addSubcommand((subcommand) => subcommand.setName("toggle").setDescription("Toggle the ability to delete bot messages with reactions. Off by default."))
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("number")
+      .setDescription("Change the number of reactions required to delete bot messages. 1 by default.")
+      .addIntegerOption((number) => number.setName("number").setDescription("The number of reactions required.").setRequired(true))
+  )
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand, translateTweetCommand, ddInstaCommand, delBotMessageCommand];
 
 let tempMessage = null;
 let removeMentionPresent = {};
@@ -106,6 +118,7 @@ let globalRetweetFile = {};
 let globalDMediaFile = {};
 let globalTranslateFile = {};
 let globalInstaConversionFile = {};
+let globalDeleteBotMessageFile = {};
 let nativeISOLanguages = {
   Afaraf: "aa",
   аҧсшәа: "ab",
@@ -479,7 +492,7 @@ let englishISOLanguages = {
 };
 client.on("messageCreate", async (msg) => {
   try {
-    // console.log(client.user.id);
+    // console.log(msg.channel.type);
     // console.log(guildWebhooks.entries());
     if (messageControlList.hasOwnProperty(msg.guildId) && messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId && msg.type !== 20 && (await msg.fetchWebhook()).owner.id === client.user.id) return;
     else if ((!messageControlList.hasOwnProperty(msg.guildId) || !messageControlList[msg.guildId].hasOwnProperty("otherWebhooks")) && msg.webhookId) return;
@@ -558,7 +571,7 @@ client.on("messageCreate", async (msg) => {
         });
       }
       if (quoteTObj.deleteQuotedLink) {
-        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim)||[];
+        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim) || [];
 
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("status/") + 7);
@@ -662,9 +675,9 @@ client.on("messageCreate", async (msg) => {
         if (typeof dMediaObj.channelList !== "undefined" && (dMediaObj.channelList.includes("all") || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
           if (Object.values(dMediaObj.toggle).some((val) => val === true) && dMediaObj.multiplePhotos.convert) {
             if (dMediaObj.toggle.photos && dMediaObj.multiplePhotos.replaceWithMosaic) {
-              replaceTwitterLinks.forEach((rLink) => {
+              replaceTwitterLinks.forEach(async (rLink) => {
                 if (tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("mosaic")) {
-                  let mosaicLink = tweetsData[rLink].media.mosaic.formats[Object.keys(tweetsData[rLink].media.mosaic.formats)[0]];
+                  let mosaicLink = await tweetsData[rLink].media.mosaic.formats[Object.keys(tweetsData[rLink].media.mosaic.formats)[0]];
                   if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("mosaic")) {
                     mosaicLink = tweetsData[rLink].quote.media.mosaic.formats[Object.keys(tweetsData[rLink].quote.media.mosaic.formats)[0]];
                   }
@@ -751,34 +764,47 @@ client.on("messageCreate", async (msg) => {
             let webhookNumber = 0;
             let botWebhook = null;
             webhooks.forEach((webhook) => {
-              if (webhook.name === "VxT") {
+              if (webhook.name === "FxT") {
                 botWebhook = webhook;
                 webhookNumber++;
               }
             });
 
             if (webhookNumber === 1) {
-              botWebhook.send({
-                content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
-                threadId: msg.channelId,
-                files: msgAttachments,
-                allowedMentions: allowedMentionsObject,
-              });
+              botWebhook
+                .send({
+                  content: vxMsg,
+                  username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                  avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
+                  threadId: msg.channelId,
+                  files: msgAttachments,
+                  allowedMentions: allowedMentionsObject,
+                })
+                .then((whMessage) => {
+                  if (globalDeleteBotMessageFile[msg.guildId].toggle) {
+                    DeleteMessageReact(whMessage);
+                  }
+                });
               if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
             } else if (webhookNumber === 0) {
               msg.guild.channels
-                .createWebhook({ channel: msg.channel.parentId, name: "VxT" })
+                .createWebhook({ channel: msg.channel.parentId, name: "FxT" })
                 .then((webhook) => {
-                  webhook.send({
-                    content: vxMsg,
-                    username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                    avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
-                    threadId: msg.channelId,
-                    files: msgAttachments,
-                    allowedMentions: allowedMentionsObject,
-                  });
+                  webhook
+                    .send({
+                      content: vxMsg,
+                      username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                      avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
+                      threadId: msg.channelId,
+                      files: msgAttachments,
+                      allowedMentions: allowedMentionsObject,
+                    })
+                    .then((whMessage) => {
+                      if (globalDeleteBotMessageFile[msg.guildId].toggle) {
+                        DeleteMessageReact(whMessage);
+                      }
+                    });
+
                   if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
                 })
                 .catch(console.error);
@@ -792,32 +818,44 @@ client.on("messageCreate", async (msg) => {
         let botWebhook = null;
         let webhookNumber = 0;
         webhooks.forEach((webhook) => {
-          if (webhook.name === "VxT") {
+          if (webhook.name === "FxT") {
             botWebhook = webhook;
             webhookNumber++;
           }
         });
 
         if (webhookNumber === 1) {
-          botWebhook.send({
-            content: vxMsg,
-            username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-            avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
-            files: msgAttachments,
-            allowedMentions: allowedMentionsObject,
-          });
+          botWebhook
+            .send({
+              content: vxMsg,
+              username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+              avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
+              files: msgAttachments,
+              allowedMentions: allowedMentionsObject,
+            })
+            .then((whMessage) => {
+              if (globalDeleteBotMessageFile[msg.guildId].toggle) {
+                DeleteMessageReact(whMessage);
+              }
+            });
           if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
         } else if (webhookNumber === 0) {
           msg.channel
-            .createWebhook({ name: "VxT" })
+            .createWebhook({ name: "FxT" })
             .then((webhook) => {
-              webhook.send({
-                content: vxMsg,
-                username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
-                avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
-                files: msgAttachments,
-                allowedMentions: allowedMentionsObject,
-              });
+              webhook
+                .send({
+                  content: vxMsg,
+                  username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) && client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayName : msg.author.username,
+                  avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
+                  files: msgAttachments,
+                  allowedMentions: allowedMentionsObject,
+                })
+                .then((whMessage) => {
+                  if (globalDeleteBotMessageFile[msg.guildId].toggle) {
+                    DeleteMessageReact(whMessage);
+                  }
+                });
               if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
             })
             .catch(console.error);
@@ -830,6 +868,23 @@ client.on("messageCreate", async (msg) => {
     console.log("ERROR OCCURRED ", e);
   }
 });
+function DeleteMessageReact(botMessage,numb=0) {
+  botMessage.react("❌").then(() => {
+    setTimeout(() => {
+      console.log("collector loop",numb);
+      const reactionFilter = (reaction) => reaction.emoji.name === "❌";
+      const reactionCollector = botMessage.createReactionCollector({ reactionFilter, max: 5000, dispose: true });
+      reactionCollector.on("collect", (r) => {
+        console.log(`Collected ${r.count}`);
+        if (r.count >= globalDeleteBotMessageFile[botMessage.guildId].rNumber + 1) {
+          botMessage.delete();
+        }
+      }); // add if loop here to check if total X reactions are same as rNumber and if they are then delete msg         then add this function to start of bot to all bot messages or make it a limit to like last 5k or something?
+      reactionCollector.on("remove", (r) => console.log(`Collected ${r.count}`));
+      reactionCollector.on("end", (collected) => console.log(`Collected ${collected.size} items `, collected.get("❌").count));
+    }, 500);
+  });
+}
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -837,6 +892,42 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.commandName === "ping") {
     await interaction.reply({ content: "Pong!" });
     return;
+  }
+  if (interaction.commandName === "deletebotmessage") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      UpdateDeleteBotMessageFile();
+    });
+    let deleteBotMsgFile = {};
+    let reactionNumber = interaction.options.getInteger("number");
+    let interactionGuildID = interaction.guildId;
+    try {
+      deleteBotMsgFile = JSON.parse(pako.inflate(fs.readFileSync("delete-bot-message-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync delete bot message interaction", err.code);
+    }
+    if (deleteBotMsgFile.hasOwnProperty(interactionGuildID)) {
+      if (interaction.options.getSubcommand() === "toggle") {
+        deleteBotMsgFile[interactionGuildID].toggle = !deleteBotMsgFile[interactionGuildID].toggle;
+      } else if (interaction.options.getSubcommand() === "number") {
+        deleteBotMsgFile[interactionGuildID].rNumber = reactionNumber;
+      }
+    } else {
+      deleteBotMsgFile[interactionGuildID] = { toggle: false, rNumber: 1 };
+    }
+    fs.writeFile("delete-bot-message-list.txt", pako.deflate(JSON.stringify(deleteBotMsgFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in delete bot message list interaction   ", err.code);
+      } else {
+        let tempContent = `Toggled the ability to delete bot message through reactions ${deleteBotMsgFile[interactionGuildID].toggle ? `on` : `off`}`;
+        if (interaction.options.getSubcommand() === "number") {
+          tempContent = `Number of reactions required set to ${deleteBotMsgFile[interactionGuildID].rNumber}`;
+        }
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
   }
   if (interaction.commandName === "convertinstagram") {
     const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
@@ -1738,14 +1829,34 @@ client.on("ready", () => {
   InitDirectMediaList();
   InitTranslateList();
   InitInstaConversionList();
+  InitDeleteBotMessageList();
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
       messageControlList[guild.id] = CheckMessageControls(guild.id);
+
+
+      // setTimeout(() => {
+      //   let msgTime=1
+      //   guild.channels.cache.forEach(async (tempChannel) => {
+      //     if (globalDeleteBotMessageFile[guild.id].toggle&&(tempChannel.isTextBased() || tempChannel.isThread())) {
+      //       let botMessages = await FetchBotMessagesTo(tempChannel,{days:2});
+      //       console.log(tempChannel.name,"IN ON READY BOT ",botMessages.length);
+      //       botMessages.reverse()
+      //       botMessages.forEach(bMsg=>{
+      //         setTimeout(async()=>{
+      //         DeleteMessageReact(bMsg, botMessages.indexOf(bMsg));
+      //         console.log(tempChannel.name,"   ",botMessages.indexOf(bMsg));},1000*msgTime);msgTime++
+      //       })
+      //     }
+      //   });
+      // }, 1000);
+
+
       // if (guild.members.me.permissions.any("ManageWebhooks")) {
       //   guild.fetchWebhooks().then((gWebhooks) => {
       //     gWebhooks.forEach((gWebhook, wID) => {
-      //       if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
+      //       if (gWebhook.owner.id === client.user.id && gWebhook.name !== "FxT") {
       //         gWebhook.delete();
       //       }
       //     });
@@ -1759,10 +1870,87 @@ client.on("ready", () => {
     UpdateGlobalDMediaFile();
     UpdateGlobalTranslateFile();
     UpdateGlobalInstaConversionFile();
+    UpdateDeleteBotMessageFile();
   }, 500);
 });
+
+
+// Fetches messages from the current time till a specified duration of time in the past.
+async function FetchBotMessagesTo(textChannel, tillTime = { years: 0, months: 0, weeks: 0, days: 1, hours: 0, minutes: 0, seconds: 0 }, lastId = null, tillDate = null) {
+  let pastDate = new Date();
+  if(tillDate===null){
+  Object.keys(tillTime).forEach((tPeriod) => {
+    switch (tPeriod) {
+      case "years":
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear() - tillTime[tPeriod], pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+        break;
+      case "months":
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth() - tillTime[tPeriod], pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+        break;
+      case "weeks":{
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() - tillTime[tPeriod]*7, pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+        break;}
+      case "days":{
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() - tillTime[tPeriod], pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+        break;}
+      case "hours":
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() , pastDate.getHours()-tillTime[tPeriod], pastDate.getMinutes(), pastDate.getSeconds());
+        break;
+      case "minutes":
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() , pastDate.getHours(), pastDate.getMinutes()-tillTime[tPeriod], pastDate.getSeconds());
+        break;
+      case "seconds":
+        if(tillTime[tPeriod]===0)break;
+        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds()-tillTime[tPeriod]);
+        break;
+    }
+  });}
+  else{pastDate=tillDate}
+  if (!textChannel.guild.members.me.permissionsIn(textChannel).has("ViewChannel")||!textChannel.guild.members.me.permissions.any("ReadMessageHistory"))    return[];
+  let messages = lastId === null ? await textChannel.messages.fetch({ limit: 100 }) : await textChannel.messages.fetch({ limit: 100, before: lastId });
+  if(messages.size===0)return []
+
+  // Filters the messages to find messages by the bot and converts it into an array and sorts it from oldest to newest
+  let filteredMessages = messages
+    .filter((tempMsg) => tempMsg.applicationId === client.application.id&&tempMsg.webhookId&&tempMsg.createdTimestamp>=pastDate.valueOf())
+    .map((e) => e)
+    .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    if(filteredMessages.length===0)return []
+  if (filteredMessages[0].createdTimestamp>=pastDate.valueOf()){
+ let recursiveMessages=await FetchBotMessagesTo(textChannel,tillTime,filteredMessages[0].id,pastDate)
+ return recursiveMessages.concat(filteredMessages);
+  }
+  else {
+    return filteredMessages
+  } 
+}
+
 // client.on("debug", ( e ) => console.log(e));
-client.login(Config["TOKEN"]);
+client.login(Config["TEST TOKEN"]);
+function InitDeleteBotMessageList() {
+  let deleteBotMsgFile = {};
+  try {
+    deleteBotMsgFile = JSON.parse(pako.inflate(fs.readFileSync("delete-bot-message-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in delete bot message list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!deleteBotMsgFile.hasOwnProperty(guild.id)) {
+      deleteBotMsgFile[guild.id] = { toggle: false, rNumber: 1 };
+    }
+  });
+  fs.writeFile("delete-bot-message-list.txt", pako.deflate(JSON.stringify(deleteBotMsgFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init delete bot messsage list write", err.code);
+    }
+  });
+}
 function InitInstaConversionList() {
   let instaConversionFile = {};
   try {
@@ -2030,18 +2218,27 @@ function UpdateGlobalInstaConversionFile() {
   }
   globalInstaConversionFile = instaConversionFile;
 }
+function UpdateDeleteBotMessageFile() {
+  let deleteBotMsgFile = {};
+  try {
+    deleteBotMsgFile = JSON.parse(pako.inflate(fs.readFileSync("delete-bot-message-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg delete bot message update function", err.code);
+  }
+  globalDeleteBotMessageFile = deleteBotMsgFile;
+}
 
 function getBotWebhook(set) {
   let items = Array.from(set);
   let filtereditems = items.filter((elem) => {
-    return elem[1].name === "VxT";
+    return elem[1].name === "FxT";
   });
   return filtereditems[0];
 }
 //registering slash commands here
 (async () => {
   try {
-    const data = await rest.put(Routes.applicationCommands(Config["Client ID"]), { body: globalCommandsBody });
+    const data = await rest.put(Routes.applicationCommands(Config["Test Client ID"]), { body: globalCommandsBody });
     console.log(`Successfully reloaded ${data.length} application (/) commands.`);
   } catch (error) {
     console.error(error);
