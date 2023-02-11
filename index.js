@@ -871,17 +871,17 @@ client.on("messageCreate", async (msg) => {
 function DeleteMessageReact(botMessage,numb=0) {
   botMessage.react("❌").then(() => {
     setTimeout(() => {
-      console.log("collector loop",numb);
+      // console.log("collector loop",numb);
       const reactionFilter = (reaction) => reaction.emoji.name === "❌";
       const reactionCollector = botMessage.createReactionCollector({ reactionFilter, max: 5000, dispose: true });
       reactionCollector.on("collect", (r) => {
-        console.log(`Collected ${r.count}`);
+        // console.log(`Collected ${r.count}`);
         if (r.count >= globalDeleteBotMessageFile[botMessage.guildId].rNumber + 1) {
           botMessage.delete();
         }
-      }); // add if loop here to check if total X reactions are same as rNumber and if they are then delete msg         then add this function to start of bot to all bot messages or make it a limit to like last 5k or something?
-      reactionCollector.on("remove", (r) => console.log(`Collected ${r.count}`));
-      reactionCollector.on("end", (collected) => console.log(`Collected ${collected.size} items `, collected.get("❌").count));
+      });
+      // reactionCollector.on("remove", (r) => console.log(`Collected ${r.count}`));
+      // reactionCollector.on("end", (collected) => console.log(`Collected ${collected.size} items `, collected.get("❌").count));
     }, 500);
   });
 }
