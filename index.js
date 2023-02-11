@@ -7,7 +7,7 @@ const { log } = require("console");
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessageReactions],
 });
-const rest = new REST({ version: "10" }).setToken(Config["TEST TOKEN"]);
+const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
 const pingCommand = new SlashCommandBuilder().setName("ping").setDescription("Replies with pong");
 const mentionRemoveCommand = new SlashCommandBuilder()
   .setName("mention")
@@ -764,7 +764,7 @@ client.on("messageCreate", async (msg) => {
             let webhookNumber = 0;
             let botWebhook = null;
             webhooks.forEach((webhook) => {
-              if (webhook.name === "FxT") {
+              if (webhook.name === "VxT") {
                 botWebhook = webhook;
                 webhookNumber++;
               }
@@ -788,7 +788,7 @@ client.on("messageCreate", async (msg) => {
               if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
             } else if (webhookNumber === 0) {
               msg.guild.channels
-                .createWebhook({ channel: msg.channel.parentId, name: "FxT" })
+                .createWebhook({ channel: msg.channel.parentId, name: "VxT" })
                 .then((webhook) => {
                   webhook
                     .send({
@@ -818,7 +818,7 @@ client.on("messageCreate", async (msg) => {
         let botWebhook = null;
         let webhookNumber = 0;
         webhooks.forEach((webhook) => {
-          if (webhook.name === "FxT") {
+          if (webhook.name === "VxT") {
             botWebhook = webhook;
             webhookNumber++;
           }
@@ -841,7 +841,7 @@ client.on("messageCreate", async (msg) => {
           if (messageControlList[msg.guildId].deleteOriginal) msg.delete();
         } else if (webhookNumber === 0) {
           msg.channel
-            .createWebhook({ name: "FxT" })
+            .createWebhook({ name: "VxT" })
             .then((webhook) => {
               webhook
                 .send({
@@ -1856,7 +1856,7 @@ client.on("ready", () => {
       // if (guild.members.me.permissions.any("ManageWebhooks")) {
       //   guild.fetchWebhooks().then((gWebhooks) => {
       //     gWebhooks.forEach((gWebhook, wID) => {
-      //       if (gWebhook.owner.id === client.user.id && gWebhook.name !== "FxT") {
+      //       if (gWebhook.owner.id === client.user.id && gWebhook.name !== "VxT") {
       //         gWebhook.delete();
       //       }
       //     });
@@ -1932,7 +1932,7 @@ async function FetchBotMessagesTo(textChannel, tillTime = { years: 0, months: 0,
 }
 
 // client.on("debug", ( e ) => console.log(e));
-client.login(Config["TEST TOKEN"]);
+client.login(Config["TOKEN"]);
 function InitDeleteBotMessageList() {
   let deleteBotMsgFile = {};
   try {
@@ -2231,14 +2231,14 @@ function UpdateDeleteBotMessageFile() {
 function getBotWebhook(set) {
   let items = Array.from(set);
   let filtereditems = items.filter((elem) => {
-    return elem[1].name === "FxT";
+    return elem[1].name === "VxT";
   });
   return filtereditems[0];
 }
 //registering slash commands here
 (async () => {
   try {
-    const data = await rest.put(Routes.applicationCommands(Config["Test Client ID"]), { body: globalCommandsBody });
+    const data = await rest.put(Routes.applicationCommands(Config["Client ID"]), { body: globalCommandsBody });
     console.log(`Successfully reloaded ${data.length} application (/) commands.`);
   } catch (error) {
     console.error(error);
