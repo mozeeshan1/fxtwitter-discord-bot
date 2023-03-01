@@ -740,6 +740,7 @@ client.on("messageCreate", async (msg) => {
       }
     }
     if (vxMsg !== msg.content.replaceAll(")", " ".concat(`)`))) {
+      vxMsg = vxMsg.replaceAll(/(fxtwitter)+\1/gim, "fxtwitter");
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
       if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
@@ -868,7 +869,7 @@ client.on("messageCreate", async (msg) => {
     console.log("ERROR OCCURRED ", e);
   }
 });
-function DeleteMessageReact(botMessage,numb=0) {
+function DeleteMessageReact(botMessage, numb = 0) {
   botMessage.react("❌").then(() => {
     setTimeout(() => {
       // console.log("collector loop",numb);
@@ -1835,7 +1836,6 @@ client.on("ready", () => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
       messageControlList[guild.id] = CheckMessageControls(guild.id);
 
-
       // setTimeout(() => {
       //   let msgTime=1
       //   guild.channels.cache.forEach(async (tempChannel) => {
@@ -1851,7 +1851,6 @@ client.on("ready", () => {
       //     }
       //   });
       // }, 1000);
-
 
       // if (guild.members.me.permissions.any("ManageWebhooks")) {
       //   guild.fetchWebhooks().then((gWebhooks) => {
@@ -1874,61 +1873,63 @@ client.on("ready", () => {
   }, 500);
 });
 
-
 // Fetches messages from the current time till a specified duration of time in the past.
 async function FetchBotMessagesTo(textChannel, tillTime = { years: 0, months: 0, weeks: 0, days: 1, hours: 0, minutes: 0, seconds: 0 }, lastId = null, tillDate = null) {
   let pastDate = new Date();
-  if(tillDate===null){
-  Object.keys(tillTime).forEach((tPeriod) => {
-    switch (tPeriod) {
-      case "years":
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear() - tillTime[tPeriod], pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
-        break;
-      case "months":
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth() - tillTime[tPeriod], pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
-        break;
-      case "weeks":{
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() - tillTime[tPeriod]*7, pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
-        break;}
-      case "days":{
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() - tillTime[tPeriod], pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
-        break;}
-      case "hours":
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() , pastDate.getHours()-tillTime[tPeriod], pastDate.getMinutes(), pastDate.getSeconds());
-        break;
-      case "minutes":
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() , pastDate.getHours(), pastDate.getMinutes()-tillTime[tPeriod], pastDate.getSeconds());
-        break;
-      case "seconds":
-        if(tillTime[tPeriod]===0)break;
-        pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds()-tillTime[tPeriod]);
-        break;
-    }
-  });}
-  else{pastDate=tillDate}
-  if (!textChannel.guild.members.me.permissionsIn(textChannel).has("ViewChannel")||!textChannel.guild.members.me.permissions.any("ReadMessageHistory"))    return[];
+  if (tillDate === null) {
+    Object.keys(tillTime).forEach((tPeriod) => {
+      switch (tPeriod) {
+        case "years":
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear() - tillTime[tPeriod], pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+          break;
+        case "months":
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth() - tillTime[tPeriod], pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+          break;
+        case "weeks": {
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() - tillTime[tPeriod] * 7, pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+          break;
+        }
+        case "days": {
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate() - tillTime[tPeriod], pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds());
+          break;
+        }
+        case "hours":
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate(), pastDate.getHours() - tillTime[tPeriod], pastDate.getMinutes(), pastDate.getSeconds());
+          break;
+        case "minutes":
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes() - tillTime[tPeriod], pastDate.getSeconds());
+          break;
+        case "seconds":
+          if (tillTime[tPeriod] === 0) break;
+          pastDate = new Date(pastDate.getFullYear(), pastDate.getMonth(), pastDate.getDate(), pastDate.getHours(), pastDate.getMinutes(), pastDate.getSeconds() - tillTime[tPeriod]);
+          break;
+      }
+    });
+  } else {
+    pastDate = tillDate;
+  }
+  if (!textChannel.guild.members.me.permissionsIn(textChannel).has("ViewChannel") || !textChannel.guild.members.me.permissions.any("ReadMessageHistory")) return [];
   let messages = lastId === null ? await textChannel.messages.fetch({ limit: 100 }) : await textChannel.messages.fetch({ limit: 100, before: lastId });
-  if(messages.size===0)return []
+  if (messages.size === 0) return [];
 
   // Filters the messages to find messages by the bot and converts it into an array and sorts it from oldest to newest
   let filteredMessages = messages
-    .filter((tempMsg) => tempMsg.applicationId === client.application.id&&tempMsg.webhookId&&tempMsg.createdTimestamp>=pastDate.valueOf())
+    .filter((tempMsg) => tempMsg.applicationId === client.application.id && tempMsg.webhookId && tempMsg.createdTimestamp >= pastDate.valueOf())
     .map((e) => e)
     .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-    if(filteredMessages.length===0)return []
-  if (filteredMessages[0].createdTimestamp>=pastDate.valueOf()){
- let recursiveMessages=await FetchBotMessagesTo(textChannel,tillTime,filteredMessages[0].id,pastDate)
- return recursiveMessages.concat(filteredMessages);
+  if (filteredMessages.length === 0) return [];
+  if (filteredMessages[0].createdTimestamp >= pastDate.valueOf()) {
+    let recursiveMessages = await FetchBotMessagesTo(textChannel, tillTime, filteredMessages[0].id, pastDate);
+    return recursiveMessages.concat(filteredMessages);
+  } else {
+    return filteredMessages;
   }
-  else {
-    return filteredMessages
-  } 
 }
 
 // client.on("debug", ( e ) => console.log(e));
