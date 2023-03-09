@@ -536,7 +536,7 @@ client.on("messageCreate", async (msg) => {
         let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
 
         for (let i of twitterLinks) {
-          let j = i.substring(i.indexOf("status/") + 7);
+          let j = i.substring(i.indexOf("/status/") + 8);
           let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
           await fetch(fxAPIUrl)
             .then((response) => {
@@ -574,7 +574,7 @@ client.on("messageCreate", async (msg) => {
         let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim) || [];
 
         for (let i of twitterLinks) {
-          let j = i.substring(i.indexOf("status/") + 7);
+          let j = i.substring(i.indexOf("/status/") + 8);
           let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
           await fetch(fxAPIUrl)
             .then((response) => {
@@ -602,7 +602,7 @@ client.on("messageCreate", async (msg) => {
         if (translateObj.toggle) {
           let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
           for (let tLink of twitterLinks) {
-            let tempFXLink = `https://${convertToDomain}.com/`.concat(tLink.match(/(\/status\/)\d*/gm)[0], `/`, translateObj.languageCode);
+            let tempFXLink = `https://${convertToDomain}.com`.concat(tLink.match(/(\/status\/)\d*/gm)[0], `/`, translateObj.languageCode);
             vxMsg = vxMsg.replaceAll(tLink, tempFXLink);
           }
         } else {
@@ -614,7 +614,7 @@ client.on("messageCreate", async (msg) => {
         if (Object.keys(tweetsData).length === 0) {
           for (let i of twitterLinks) {
             if (!tweetsData.hasOwnProperty(i)) {
-              let j = i.substring(i.indexOf("status/") + 7);
+              let j = i.substring(i.indexOf("/status/") + 8);
               let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
               await fetch(fxAPIUrl)
                 .then((response) => {
@@ -707,7 +707,7 @@ client.on("messageCreate", async (msg) => {
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               } else if ((dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) || (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos"))) {
-                let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                let tempFXLink = `https://d.fxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               }
@@ -716,14 +716,14 @@ client.on("messageCreate", async (msg) => {
           if (Object.values(dMediaObj.toggle).some((val) => val === true)) {
             replaceTwitterLinks.forEach((rLink) => {
               if (dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) {
-                let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                let tempFXLink = `https://d.fxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
                 if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) {
                   tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
                 }
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               } else if (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos")) {
-                let tempFXLink = `https://d.fxtwitter.com/`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                let tempFXLink = `https://d.fxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
                 if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos")) {
                   tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
                 }
@@ -734,7 +734,7 @@ client.on("messageCreate", async (msg) => {
           }
         }
         for (let j of replaceTwitterLinks) {
-          let tempFXLink = `https://${convertToDomain}.com/`.concat(j.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+          let tempFXLink = `https://${convertToDomain}.com`.concat(j.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
           vxMsg = vxMsg.replaceAll(j, tempFXLink);
         }
       }
