@@ -492,8 +492,6 @@ let englishISOLanguages = {
 };
 client.on("messageCreate", async (msg) => {
   try {
-    // console.log(msg.channel.type);
-    // console.log(guildWebhooks.entries());
     if (messageControlList.hasOwnProperty(msg.guildId) && messageControlList[msg.guildId].hasOwnProperty("otherWebhooks") && msg.webhookId && msg.type !== 20 && (await msg.fetchWebhook()).owner.id === client.user.id) return;
     else if ((!messageControlList.hasOwnProperty(msg.guildId) || !messageControlList[msg.guildId].hasOwnProperty("otherWebhooks")) && msg.webhookId) return;
     tempMessage = msg;
@@ -599,14 +597,17 @@ client.on("messageCreate", async (msg) => {
       if (Object.values(toggleObj).every((val) => val === false) && Object.values(dMediaObj.toggle).every((val) => val === false) && (qTLinkConversion.ignore || (!qTLinkConversion.text && !qTLinkConversion.photos && !qTLinkConversion.videos && !qTLinkConversion.polls))) {
         return;
       } else if (Object.values(toggleObj).every((val) => val === true) && Object.values(dMediaObj.toggle).every((val) => val === false) && (qTLinkConversion.ignore || qTLinkConversion.follow || (qTLinkConversion.text && qTLinkConversion.photos && qTLinkConversion.videos && qTLinkConversion.polls))) {
+        let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
         if (translateObj.toggle) {
-          let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
           for (let tLink of twitterLinks) {
             let tempFXLink = `https://${convertToDomain}.com`.concat(tLink.match(/(\/status\/)\d*/gm)[0], `/`, translateObj.languageCode);
             vxMsg = vxMsg.replaceAll(tLink, tempFXLink);
           }
         } else {
-          vxMsg = vxMsg.replace(/(\/\/)(.*.)(?=twitter)/g, "//twitter").replace(/twitter/g, convertToDomain);
+          for (let tLink of twitterLinks) {
+            let tempFXLink = `https://${convertToDomain}.com`.concat(tLink.match(/(\/status\/)\d*/gm)[0]);
+            vxMsg = vxMsg.replaceAll(tLink, tempFXLink);
+          }
         }
       } else {
         let twitterLinks = vxMsg.match(/(http(s)*:\/\/(www\.)?(mobile\.)?(twitter.com)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gim);
