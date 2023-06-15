@@ -777,7 +777,7 @@ client.on("messageCreate", async (msg) => {
               botWebhook
                 .send({
                   content: vxMsg,
-                  username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? msg.member.displayName : msg.author.username,
+                  username: msg.member.nickname!==null ? msg.member.nickname : msg.author.username,
                   avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
                   threadId: msg.channelId,
                   files: msgAttachments,
@@ -796,7 +796,7 @@ client.on("messageCreate", async (msg) => {
                   webhook
                     .send({
                       content: vxMsg,
-                      username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? msg.member.displayName : msg.author.username,
+                      username: msg.member.nickname !== null ? msg.member.nickname : msg.author.username,
                       avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
                       threadId: msg.channelId,
                       files: msgAttachments,
@@ -831,7 +831,7 @@ client.on("messageCreate", async (msg) => {
           botWebhook
             .send({
               content: vxMsg,
-              username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? msg.member.displayName : msg.author.username,
+              username: msg.member.nickname !== null ? msg.member.nickname : msg.author.username,
               avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
               files: msgAttachments,
               allowedMentions: allowedMentionsObject,
@@ -849,7 +849,7 @@ client.on("messageCreate", async (msg) => {
               webhook
                 .send({
                   content: vxMsg,
-                  username: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).hasOwnProperty("displayName") ? msg.member.displayName : msg.author.username,
+                  username: msg.member.nickname !== null ? msg.member.nickname : msg.author.username,
                   avatarURL: client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id) ? client.guilds.cache.get(msg.guildId).members.cache.get(msg.author.id).displayAvatarURL() : msg.author.displayAvatarURL(),
                   files: msgAttachments,
                   allowedMentions: allowedMentionsObject,
