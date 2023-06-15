@@ -741,6 +741,7 @@ client.on("messageCreate", async (msg) => {
       }
     }
     if (vxMsg !== msg.content.replaceAll(")", " ".concat(`)`))) {
+      console.log(msg.author);
       vxMsg = vxMsg.replaceAll(/(fxtwitter)+\1/gim, "fxtwitter");
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
