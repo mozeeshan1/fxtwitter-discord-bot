@@ -5,7 +5,7 @@ const pako = require("pako");
 const { Client, GatewayIntentBits, SlashCommandBuilder, Events, REST, Routes, PermissionFlagsBits, roleMention, userMention, GuildTemplate } = require("discord.js");
 const { log } = require("console");
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessageReactions],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.GuildIntegrations, GatewayIntentBits.GuildMessageReactions],
 });
 const rest = new REST({ version: "10" }).setToken(Config["TOKEN"]);
 const pingCommand = new SlashCommandBuilder().setName("ping").setDescription("Replies with pong");
@@ -511,7 +511,7 @@ client.on("messageCreate", async (msg) => {
       vxMsg = vxMsg.replaceAll(`instagram.com`, `ddinstagram.com`);
     }
     if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim)) {
-      let convertToDomain = "fxtwitter";
+      let convertToDomain = "vxtwitter";
 
       let toggleObj = globalToggleFile[msg.guildId];
       let quoteTObj = globalQuoteTweetFile[msg.guildId];
@@ -522,7 +522,7 @@ client.on("messageCreate", async (msg) => {
 
       let tweetsData = {};
       if (Object.values(dMediaObj.toggle).every((val) => val === true) && ((typeof dMediaObj.channelList !== "undefined" && dMediaObj.channelList.includes("all")) || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
-        convertToDomain = "d.fxtwitter";
+        convertToDomain = "d.vxtwitter";
       }
       if (qTLinkConversion.follow) {
         qTLinkConversion.text = toggleObj.text;
@@ -535,7 +535,7 @@ client.on("messageCreate", async (msg) => {
 
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("/status/") + 8);
-          let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+          let fxAPIUrl = "https://api.vxtwitter.com/status/".concat(j);
           await fetch(fxAPIUrl)
             .then((response) => {
               return response.json();
@@ -573,7 +573,7 @@ client.on("messageCreate", async (msg) => {
 
         for (let i of twitterLinks) {
           let j = i.substring(i.indexOf("/status/") + 8);
-          let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+          let fxAPIUrl = "https://api.vxtwitter.com/status/".concat(j);
           await fetch(fxAPIUrl)
             .then((response) => {
               return response.json();
@@ -616,7 +616,7 @@ client.on("messageCreate", async (msg) => {
           for (let i of twitterLinks) {
             if (!tweetsData.hasOwnProperty(i)) {
               let j = i.substring(i.indexOf("/status/") + 8);
-              let fxAPIUrl = "https://api.fxtwitter.com/status/".concat(j);
+              let fxAPIUrl = "https://api.vxtwitter.com/status/".concat(j);
               await fetch(fxAPIUrl)
                 .then((response) => {
                   return response.json();
@@ -704,11 +704,11 @@ client.on("messageCreate", async (msg) => {
                 (dMediaObj.toggle.photos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) ||
                 (dMediaObj.toggle.videos && (!tweetsData[rLink].hasOwnProperty("media") || dMediaObj.quoteTweet.preferQuoteTweet) && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos"))
               ) {
-                let tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+                let tempFXLink = `https://d.vxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               } else if ((dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) || (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos"))) {
-                let tempFXLink = `https://d.fxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                let tempFXLink = `https://d.vxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               }
@@ -717,16 +717,16 @@ client.on("messageCreate", async (msg) => {
           if (Object.values(dMediaObj.toggle).some((val) => val === true)) {
             replaceTwitterLinks.forEach((rLink) => {
               if (dMediaObj.toggle.photos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("photos")) {
-                let tempFXLink = `https://d.fxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                let tempFXLink = `https://d.vxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
                 if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("photos")) {
-                  tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+                  tempFXLink = `https://d.vxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
                 }
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
               } else if (dMediaObj.toggle.videos && tweetsData[rLink].hasOwnProperty("media") && tweetsData[rLink].media.hasOwnProperty("videos")) {
-                let tempFXLink = `https://d.fxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
+                let tempFXLink = `https://d.vxtwitter.com`.concat(rLink.match(/(\/status\/)\d*/gm)[0], `/${translateObj.toggle ? translateObj.languageCode : ``}`);
                 if (dMediaObj.quoteTweet.convert && dMediaObj.quoteTweet.preferQuoteTweet && tweetsData[rLink].hasOwnProperty("quote") && tweetsData[rLink].quote.hasOwnProperty("media") && tweetsData[rLink].quote.media.hasOwnProperty("videos")) {
-                  tempFXLink = `https://d.fxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
+                  tempFXLink = `https://d.vxtwitter.com/status/${tweetsData[rLink].quote.id}/${translateObj.toggle ? translateObj.languageCode : ``}`;
                 }
                 vxMsg = vxMsg.replaceAll(rLink, tempFXLink);
                 replaceTwitterLinks.splice(replaceTwitterLinks.indexOf(rLink), 1);
@@ -741,7 +741,7 @@ client.on("messageCreate", async (msg) => {
       }
     }
     if (vxMsg !== msg.content.replaceAll(")", " ".concat(`)`))) {
-      vxMsg = vxMsg.replaceAll(/(fxtwitter)+\1/gim, "fxtwitter");
+      vxMsg = vxMsg.replaceAll(/(vxtwitter)+\1/gim, "vxtwitter");
       let msgAttachments = [];
       let allowedMentionsObject = { parse: [] };
       if (removeMentionPresent[msg.guildId] && (msg.mentions.everyone || /@everyone|@here/gi.test(msg.content) || msg.mentions.users.size > 0 || msg.mentions.roles.size > 0)) {
