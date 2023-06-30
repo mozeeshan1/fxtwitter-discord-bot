@@ -510,7 +510,7 @@ client.on("messageCreate", async (msg) => {
       }
       vxMsg = vxMsg.replaceAll(`instagram.com`, `ddinstagram.com`);
     }
-    if(msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim)&&Object.values(toggleObj).every((val) => val === true)){
+    if (msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && Object.values(globalToggleFile[msg.guildId]).every((val) => val === true)) {
       vxMsg = vxMsg.replaceAll(/(twitter)/gim, "vxtwitter");
     }
     // if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim)) {
