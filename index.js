@@ -1877,6 +1877,7 @@ client.on("ready", () => {
   InitTranslateList();
   InitInstaConversionList();
   InitDeleteBotMessageList();
+  InitTwitterConversionList;
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
@@ -1981,6 +1982,24 @@ async function FetchBotMessagesTo(textChannel, tillTime = { years: 0, months: 0,
 
 // client.on("debug", ( e ) => console.log(e));
 client.login(Config["TOKEN"]);
+function InitTwitterConversionList() {
+  let twitterConversionFile = {};
+  try {
+    twitterConversionFile = JSON.parse(pako.inflate(fs.readFileSync("twitter-conversion-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in twitter conversion list read init", err.code);
+  }
+  client.guilds.cache.forEach((guild) => {
+    if (!twitterConversionFile.hasOwnProperty(guild.id)) {
+      twitterConversionFile[guild.id] = {fxtwitter:true };
+    }
+  });
+  fs.writeFile("twitter-conversion-list.txt", pako.deflate(JSON.stringify(twitterConversionFile)), { encoding: "utf8" }, async (err) => {
+    if (err) {
+      console.log("error in init twitter conversion list write", err.code);
+    }
+  });
+}
 function InitDeleteBotMessageList() {
   let deleteBotMsgFile = {};
   try {
