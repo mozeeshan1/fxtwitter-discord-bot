@@ -1917,7 +1917,7 @@ client.on("ready", () => {
     UpdateGlobalTranslateFile();
     UpdateGlobalInstaConversionFile();
     UpdateDeleteBotMessageFile();
-    UpdateTwitterConversionFile;
+    UpdateTwitterConversionFile();
   }, 500);
 });
 
