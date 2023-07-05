@@ -924,7 +924,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           twitterConversionFile[interactionGuildID].fxtwitter=true
         }
         else{
-          twitterConversionFile[interactionGuildID].fxtwitter = true;
+          twitterConversionFile[interactionGuildID].fxtwitter = false;
         }
       }
     } else {
