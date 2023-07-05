@@ -1877,7 +1877,7 @@ client.on("ready", () => {
   InitTranslateList();
   InitInstaConversionList();
   InitDeleteBotMessageList();
-  InitTwitterConversionList;
+  InitTwitterConversionList();
   setTimeout(() => {
     client.guilds.cache.forEach((guild) => {
       removeMentionPresent[guild.id] = CheckRemoveMentions(guild.id);
