@@ -908,7 +908,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
     const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
     collector.once("collect", async (message) => {
-      updateTwitterConversionFile();
+      UpdateTwitterConversionFile();
     });
     let twitterConversionFile = {};
     let preference = interaction.options.getString("preference");
@@ -1916,6 +1916,7 @@ client.on("ready", () => {
     UpdateGlobalTranslateFile();
     UpdateGlobalInstaConversionFile();
     UpdateDeleteBotMessageFile();
+    UpdateTwitterConversionFile;
   }, 500);
 });
 
@@ -2274,7 +2275,7 @@ function UpdateDeleteBotMessageFile() {
   }
   globalDeleteBotMessageFile = deleteBotMsgFile;
 }
-function updateTwitterConversionFile() {
+function UpdateTwitterConversionFile() {
   let twitterConversionFile = {};
   try {
     twitterConversionFile = JSON.parse(pako.inflate(fs.readFileSync("twitter-conversion-list.txt"), { to: "string" }));
