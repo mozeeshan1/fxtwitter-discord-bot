@@ -105,7 +105,12 @@ const delBotMessageCommand = new SlashCommandBuilder()
       .addIntegerOption((number) => number.setName("number").setDescription("The number of reactions required.").setRequired(true))
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand, translateTweetCommand, ddInstaCommand, delBotMessageCommand];
+  const twitterConversionCommand = new SlashCommandBuilder()
+    .setName("twitterconversion")
+    .setDescription("Change preference for vxtwitter or fxtwitter.")
+    .addSubcommand((subcommand) => subcommand.setName("select").setDescription("Select between vxtwitter and fxtwttier. vxtwitter by default.").addStringOption((option)=> option.setName("preference").setDescription("The options for preference of twitter link conversion.").setRequired(true).addChoices({name:"fxtwitter",value:"fxtwitter"},{name:"vxtwitter",value:"vxtwitter"})))
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand, translateTweetCommand, ddInstaCommand, delBotMessageCommand, twitterConversionCommand];
 
 let tempMessage = null;
 let removeMentionPresent = {};
@@ -119,6 +124,7 @@ let globalDMediaFile = {};
 let globalTranslateFile = {};
 let globalInstaConversionFile = {};
 let globalDeleteBotMessageFile = {};
+let globalTwitterConversionFile={};
 let nativeISOLanguages = {
   Afaraf: "aa",
   аҧсшәа: "ab",
@@ -510,10 +516,10 @@ client.on("messageCreate", async (msg) => {
       }
       vxMsg = vxMsg.replaceAll(`instagram.com`, `ddinstagram.com`);
     }
-    // if (msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && Object.values(globalToggleFile[msg.guildId]).every((val) => val === true)) {
-    //   vxMsg = vxMsg.replaceAll(/(twitter)/gim, "vxtwitter");
-    // }
-    if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim)) {
+    if (msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && !globalTwitterConversionFile[msg.guildId].fxtwitter) {
+      vxMsg = vxMsg.replaceAll(/(twitter)/gim, "vxtwitter");
+    }
+    if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && globalTwitterConversionFile[msg.guildId].fxtwitter) {
       let convertToDomain = "fxtwitter";
 
       let toggleObj = globalToggleFile[msg.guildId];
@@ -897,6 +903,42 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.commandName === "ping") {
     await interaction.reply({ content: "Pong!" });
     return;
+  }
+  if (interaction.commandName === "twitterconversion") {
+    const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
+    const collector = interaction.channel.createMessageCollector(filter, { max: 1, time: 15000 });
+    collector.once("collect", async (message) => {
+      updateTwitterConversionFile();
+    });
+    let twitterConversionFile = {};
+    let preference = interaction.options.getString("preference");
+    let interactionGuildID = interaction.guildId;
+    try {
+      twitterConversionFile = JSON.parse(pako.inflate(fs.readFileSync("twitter-conversion-list.txt"), { to: "string" }));
+    } catch (err) {
+      console.log("Error in all read file sync twitter conversion interaction", err.code);
+    }
+    if (twitterConversionFile.hasOwnProperty(interactionGuildID)) {
+      if (interaction.options.getSubcommand() === "select") {
+        if(preference==="fxtwitter"){
+          twitterConversionFile[interactionGuildID].fxtwitter=true
+        }
+        else{
+          twitterConversionFile[interactionGuildID].fxtwitter = true;
+        }
+      }
+    } else {
+      twitterConversionFile[interactionGuildID] = { fxtwitter: true};
+    }
+    fs.writeFile("twitter-conversion-list.txt", pako.deflate(JSON.stringify(twitterConversionFile)), { encoding: "utf8" }, async (err) => {
+      if (err) {
+        console.log("error in file writing in twitter conversion list interaction   ", err.code);
+      } else {
+        let tempContent = `Twitter links will be converted to ${twitterConversionFile[interactionGuildID].fxtwitter ? `fxtwitter` : `vxtwitter`}`;
+        await interaction.reply({ content: tempContent });
+        return;
+      }
+    });
   }
   if (interaction.commandName === "deletebotmessage") {
     const filter = (tempMessage) => tempMessage.author.id === interaction.user.id;
@@ -2232,6 +2274,16 @@ function UpdateDeleteBotMessageFile() {
   }
   globalDeleteBotMessageFile = deleteBotMsgFile;
 }
+function updateTwitterConversionFile() {
+  let twitterConversionFile = {};
+  try {
+    twitterConversionFile = JSON.parse(pako.inflate(fs.readFileSync("twitter-conversion-list.txt"), { to: "string" }));
+  } catch (err) {
+    console.log("Error in text read file sync msg twitter conversion update function", err.code);
+  }
+  globalTwitterConversionFile = twitterConversionFile;
+}
+
 
 function getBotWebhook(set) {
   let items = Array.from(set);
