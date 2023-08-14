@@ -108,7 +108,12 @@ const delBotMessageCommand = new SlashCommandBuilder()
   const twitterConversionCommand = new SlashCommandBuilder()
     .setName("twitterconversion")
     .setDescription("Change preference for vxtwitter or fxtwitter.")
-    .addSubcommand((subcommand) => subcommand.setName("select").setDescription("Select between vxtwitter and fxtwttier. vxtwitter by default.").addStringOption((option)=> option.setName("preference").setDescription("The options for preference of twitter link conversion.").setRequired(true).addChoices({name:"fxtwitter",value:"fxtwitter"},{name:"vxtwitter",value:"vxtwitter"})))
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("select")
+        .setDescription("Select between vxtwitter and fxtwttier. vxtwitter by default.")
+        .addStringOption((option) => option.setName("preference").setDescription("The options for preference of twitter link conversion.").setRequired(true).addChoices({ name: "fxtwitter", value: "fxtwitter" }, { name: "vxtwitter", value: "vxtwitter" }))
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 const globalCommandsBody = [pingCommand, mentionRemoveCommand, fxToggleCommand, messageControlCommand, quoteTweetCommand, retweetCommand, directMediaCommand, translateTweetCommand, ddInstaCommand, delBotMessageCommand, twitterConversionCommand];
 
@@ -516,10 +521,12 @@ client.on("messageCreate", async (msg) => {
       }
       vxMsg = vxMsg.replaceAll(`instagram.com`, `ddinstagram.com`);
     }
-    if (msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && !globalTwitterConversionFile[msg.guildId].fxtwitter) {
+    if ((msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) || (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*x.com/gim)) && !globalTwitterConversionFile[msg.guildId].fxtwitter)) {
+      vxMsg = vxMsg.replaceAll(/(x.com)/gim, "vxtwitter.com");
       vxMsg = vxMsg.replaceAll(/(twitter)/gim, "vxtwitter");
     }
-    if (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && globalTwitterConversionFile[msg.guildId].fxtwitter) {
+    if ((msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) || msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*x.com/gim)) && globalTwitterConversionFile[msg.guildId].fxtwitter) {
+      vxMsg = vxMsg.replaceAll(/(x.com)/gim, "twitter.com");
       let convertToDomain = "fxtwitter";
 
       let toggleObj = globalToggleFile[msg.guildId];
