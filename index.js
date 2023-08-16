@@ -523,7 +523,7 @@ client.on("messageCreate", async (msg) => {
     }
     if ((msg.content.match(/https(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && !globalTwitterConversionFile[msg.guildId].fxtwitter) || (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*x.com/gim) && !globalTwitterConversionFile[msg.guildId].fxtwitter)) {
       vxMsg = vxMsg.replaceAll(/(x.com)/gim, "vxtwitter.com");
-      vxMsg = vxMsg.replaceAll(/(twitter)/gim, "vxtwitter");
+      vxMsg = vxMsg.replaceAll(/(?:((\.)|(\/)))twitter.com/gim, "vxtwitter");
     }
     if ((msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*twitter.com/gim) && globalTwitterConversionFile[msg.guildId].fxtwitter) || (msg.content.match(/http(s)*:\/\/(www\.)*(mobile\.)*x.com/gim) && globalTwitterConversionFile[msg.guildId].fxtwitter)) {
       vxMsg = vxMsg.replaceAll(/(x.com)/gim, "twitter.com");
