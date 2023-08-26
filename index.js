@@ -538,7 +538,10 @@ client.on("messageCreate", async (msg) => {
       let translateObj = globalTranslateFile[msg.guildId];
 
       let tweetsData = {};
-      if (Object.values(dMediaObj.toggle).every((val) => val === true) && ((typeof dMediaObj.channelList !== "undefined" && dMediaObj.channelList.includes("all")) || (typeof msg.channelId !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))) {
+      if (
+        Object.values(dMediaObj.toggle).every((val) => val === true) &&
+        ((typeof dMediaObj.channelList !== "undefined" && dMediaObj.channelList.includes("all")) || (typeof msg.channelId !== "undefined" && typeof dMediaObj.channelList !== "undefined" && dMediaObj.channelList.includes(msg.channelId)) || (typeof msg.channel.parentId !== "undefined" && typeof dMediaObj.channelList !== "undefined" && dMediaObj.channelList.includes(msg.channel.parentId)))
+      ) {
         convertToDomain = "d.fxtwitter";
       }
       if (qTLinkConversion.follow) {
